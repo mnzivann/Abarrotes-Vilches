@@ -1,3 +1,10 @@
+<?php
+// Simulación de consulta a SQL Server: SELECT * FROM MovimientosInventario;
+$movimientosEnSQLServer = [
+    ["folio" => "MOV-1042", "producto" => "Aceite Nutrioli 946 ml", "tipo" => "Entrada", "clase" => "badge-success", "cantidad" => "+20", "motivo" => "Recepción de proveedor", "fecha" => "18/05/2026 08:30"],
+    ["folio" => "MOV-1043", "producto" => "Frijol La Sierra Bayos", "tipo" => "Salida", "clase" => "badge-warning", "cantidad" => "-5", "motivo" => "Ajuste de inventario", "fecha" => "17/05/2026 16:45"]
+];
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -23,7 +30,6 @@
         .page-header h1 { font-size: 1.8rem; }
         .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; }
         .btn-primary { background-color: var(--primary-color); color: var(--white); }
-        .btn-primary:hover { background-color: #1d4ed8; }
         .card { background-color: var(--white); border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow: hidden; }
         table { width: 100%; border-collapse: collapse; }
         thead { background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; }
@@ -40,12 +46,12 @@
     <aside class="sidebar">
         <div class="brand"><h2>Abarrotes Vilches</h2><span>Control de Sistema</span></div>
         <ul class="menu">
-            <li><a href="index.html">Productos</a></li>
-            <li class="active"><a href="inventario.html">Inventario</a></li>
-            <li><a href="ventas.html">Ventas</a></li>
-            <li><a href="mermas.html">Mermas</a></li>
-            <li><a href="empleados.html">Empleados</a></li>
-            <li><a href="reportes.html">Reportes</a></li>
+            <li><a href="index.php">Productos</a></li>
+            <li class="active"><a href="inventario.php">Inventario</a></li>
+            <li><a href="ventas.php">Ventas</a></li>
+            <li><a href="mermas.php">Mermas</a></li>
+            <li><a href="empleados.php">Empleados</a></li>
+            <li><a href="reportes.php">Reportes</a></li>
         </ul>
         <div class="user-profile"><p>Administrador</p></div>
     </aside>
@@ -53,7 +59,7 @@
     <main class="main-content">
         <header class="topbar">
             <div>Control de Inventario</div>
-            <div>Fecha: 18 de Mayo, 2026</div>
+            <div>Fecha: <?php echo date('d/m/Y'); ?></div>
         </header>
 
         <div class="page-content">
@@ -78,22 +84,16 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>MOV-1042</td>
-                            <td>Aceite Nutrioli 946 ml</td>
-                            <td><span class="badge badge-success">Entrada</span></td>
-                            <td>+20</td>
-                            <td>Recepción de proveedor</td>
-                            <td>18/05/2026 08:30</td>
-                        </tr>
-                        <tr>
-                            <td>MOV-1043</td>
-                            <td>Frijol La Sierra Bayos</td>
-                            <td><span class="badge badge-warning">Salida</span></td>
-                            <td>-5</td>
-                            <td>Ajuste de inventario</td>
-                            <td>17/05/2026 16:45</td>
-                        </tr>
+                        <?php foreach ($movimientosEnSQLServer as $mov) { ?>
+                            <tr>
+                                <td><?php echo $mov['folio']; ?></td>
+                                <td><?php echo $mov['producto']; ?></td>
+                                <td><span class="badge <?php echo $mov['clase']; ?>"><?php echo $mov['tipo']; ?></span></td>
+                                <td><?php echo $mov['cantidad']; ?></td>
+                                <td><?php echo $mov['motivo']; ?></td>
+                                <td><?php echo $mov['fecha']; ?></td>
+                            </tr>
+                        <?php } ?>
                     </tbody>
                 </table>
             </div>

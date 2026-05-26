@@ -1,12 +1,18 @@
+<?php
+// Simulación de consulta a SQL Server: SELECT * FROM Ventas;
+$ventasEnSQLServer = [
+    ["ticket" => "V-00892", "fecha" => "18/05/2026 14:20", "cajero" => "Cajero 1", "total" => 145.50, "estado" => "Completada", "clase" => "badge-success", "permiso_cancelar" => true]
+];
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Productos - Abarrotes Vilches</title>
+    <title>Ventas - Abarrotes Vilches</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
-        :root { --primary-color: #2563eb; --sidebar-bg: #1e293b; --sidebar-hover: #334155; --bg-color: #f1f5f9; --text-dark: #0f172a; --text-light: #64748b; --white: #ffffff; --danger: #ef4444; --success: #22c55e; --warning: #eab308; }
+        :root { --primary-color: #2563eb; --sidebar-bg: #1e293b; --sidebar-hover: #334155; --bg-color: #f1f5f9; --text-dark: #0f172a; --text-light: #64748b; --white: #ffffff; --danger: #ef4444; --success: #22c55e; }
         body { display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-dark); }
         .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--white); display: flex; flex-direction: column; box-shadow: 4px 0 10px rgba(0,0,0,0.1); }
         .brand { padding: 24px; text-align: center; border-bottom: 1px solid #334155; }
@@ -21,11 +27,9 @@
         .page-content { padding: 40px; overflow-y: auto; flex: 1; }
         .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
         .page-header h1 { font-size: 1.8rem; }
-        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; text-decoration: none; display: inline-block; }
         .btn-primary { background-color: var(--primary-color); color: var(--white); }
-        .btn-primary:hover { background-color: #1d4ed8; }
         .btn-action { padding: 6px 12px; font-size: 0.85rem; border-radius: 4px; margin-right: 5px; }
-        .btn-edit { background-color: var(--warning); color: #000; }
         .btn-delete { background-color: var(--danger); color: var(--white); }
         .card { background-color: var(--white); border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow: hidden; }
         table { width: 100%; border-collapse: collapse; }
@@ -36,70 +40,62 @@
         tbody tr:hover { background-color: #f8fafc; }
         .badge { padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: bold; }
         .badge-success { background-color: #dcfce7; color: #166534; }
-        .badge-danger { background-color: #fee2e2; color: #991b1b; }
     </style>
 </head>
 <body>
     <aside class="sidebar">
         <div class="brand"><h2>Abarrotes Vilches</h2><span>Control de Sistema</span></div>
         <ul class="menu">
-            <li class="active"><a href="index.html">Productos</a></li>
-            <li><a href="inventario.html">Inventario</a></li>
-            <li><a href="ventas.html">Ventas</a></li>
-            <li><a href="mermas.html">Mermas</a></li>
-            <li><a href="empleados.html">Empleados</a></li>
-            <li><a href="reportes.html">Reportes</a></li>
+            <li><a href="index.php">Productos</a></li>
+            <li><a href="inventario.php">Inventario</a></li>
+            <li class="active"><a href="ventas.php">Ventas</a></li>
+            <li><a href="mermas.php">Mermas</a></li>
+            <li><a href="empleados.php">Empleados</a></li>
+            <li><a href="reportes.php">Reportes</a></li>
         </ul>
         <div class="user-profile"><p>Administrador</p></div>
     </aside>
 
     <main class="main-content">
         <header class="topbar">
-            <div>Gestión de Catálogo</div>
-            <div>Fecha: 18 de Mayo, 2026</div>
+            <div>Módulo de Ventas</div>
+            <div>Fecha: <?php echo date('d/m/Y'); ?></div>
         </header>
 
         <div class="page-content">
             <div class="page-header">
-                <h1>Catálogo de Productos</h1>
-                <button class="btn btn-primary">Agregar Producto</button>
+                <h1>Historial de Ventas</h1>
+                <a href="nueva_venta.php" class="btn btn-primary">Nueva Venta</a>
             </div>
 
             <div class="card">
                 <table>
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Descripción del Producto</th>
-                            <th>Precio Venta</th>
-                            <th>Stock</th>
+                            <th>Ticket</th>
+                            <th>Fecha y Hora</th>
+                            <th>Atendió</th>
+                            <th>Total</th>
                             <th>Estado</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>PRD-001</td>
-                            <td>Aceite Nutrioli 946 ml</td>
-                            <td>$45.00</td>
-                            <td>24</td>
-                            <td><span class="badge badge-success">Disponible</span></td>
-                            <td>
-                                <button class="btn btn-action btn-edit">Editar</button>
-                                <button class="btn btn-action btn-delete">Eliminar</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>PRD-002</td>
-                            <td>Frijol La Sierra Bayos 560g</td>
-                            <td>$18.50</td>
-                            <td>3</td>
-                            <td><span class="badge badge-danger">Stock Bajo</span></td>
-                            <td>
-                                <button class="btn btn-action btn-edit">Editar</button>
-                                <button class="btn btn-action btn-delete">Eliminar</button>
-                            </td>
-                        </tr>
+                        <?php foreach ($ventasEnSQLServer as $venta) { ?>
+                            <tr>
+                                <td><?php echo $venta['ticket']; ?></td>
+                                <td><?php echo $venta['fecha']; ?></td>
+                                <td><?php echo $venta['cajero']; ?></td>
+                                <td>$<?php echo number_format($venta['total'], 2); ?></td>
+                                <td><span class="badge <?php echo $venta['clase']; ?>"><?php echo $venta['estado']; ?></span></td>
+                                <td>
+                                    <button class="btn btn-action" style="background-color: #e2e8f0; border: none; font-weight: 600; color: #000;">Ver Detalle</button>
+                                    <?php if ($venta['permiso_cancelar']) { ?>
+                                        <button class="btn btn-action btn-delete">Cancelar</button>
+                                    <?php } ?>
+                                </td>
+                            </tr>
+                        <?php } ?>
                     </tbody>
                 </table>
             </div>

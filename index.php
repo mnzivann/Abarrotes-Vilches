@@ -1,12 +1,20 @@
+<?php
+// Simulación de consulta a SQL Server: SELECT * FROM Productos;
+$productosEnSQLServer = [
+    ["id" => "PRD-001", "nombre" => "Aceite Nutrioli 946 ml", "precio" => 45.00, "stock" => 24, "estado" => "Disponible", "clase" => "badge-success"],
+    ["id" => "PRD-002", "nombre" => "Frijol La Sierra Bayos 560g", "precio" => 18.50, "stock" => 3, "estado" => "Stock Bajo", "clase" => "badge-danger"],
+    ["id" => "PRD-003", "nombre" => "Jabón Zote Rosa 400g", "precio" => 22.00, "stock" => 50, "estado" => "Disponible", "clase" => "badge-success"]
+];
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ventas - Abarrotes Vilches</title>
+    <title>Productos - Abarrotes Vilches</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
-        :root { --primary-color: #2563eb; --sidebar-bg: #1e293b; --sidebar-hover: #334155; --bg-color: #f1f5f9; --text-dark: #0f172a; --text-light: #64748b; --white: #ffffff; --danger: #ef4444; --success: #22c55e; }
+        :root { --primary-color: #2563eb; --sidebar-bg: #1e293b; --sidebar-hover: #334155; --bg-color: #f1f5f9; --text-dark: #0f172a; --text-light: #64748b; --white: #ffffff; --danger: #ef4444; --success: #22c55e; --warning: #eab308; }
         body { display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-dark); }
         .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--white); display: flex; flex-direction: column; box-shadow: 4px 0 10px rgba(0,0,0,0.1); }
         .brand { padding: 24px; text-align: center; border-bottom: 1px solid #334155; }
@@ -21,9 +29,10 @@
         .page-content { padding: 40px; overflow-y: auto; flex: 1; }
         .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
         .page-header h1 { font-size: 1.8rem; }
-        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; text-decoration: none; display: inline-block; }
         .btn-primary { background-color: var(--primary-color); color: var(--white); }
         .btn-action { padding: 6px 12px; font-size: 0.85rem; border-radius: 4px; margin-right: 5px; }
+        .btn-edit { background-color: var(--warning); color: #000; }
         .btn-delete { background-color: var(--danger); color: var(--white); }
         .card { background-color: var(--white); border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow: hidden; }
         table { width: 100%; border-collapse: collapse; }
@@ -41,52 +50,54 @@
     <aside class="sidebar">
         <div class="brand"><h2>Abarrotes Vilches</h2><span>Control de Sistema</span></div>
         <ul class="menu">
-            <li><a href="index.html">Productos</a></li>
-            <li><a href="inventario.html">Inventario</a></li>
-            <li class="active"><a href="ventas.html">Ventas</a></li>
-            <li><a href="mermas.html">Mermas</a></li>
-            <li><a href="empleados.html">Empleados</a></li>
-            <li><a href="reportes.html">Reportes</a></li>
+            <li class="active"><a href="index.php">Productos</a></li>
+            <li><a href="inventario.php">Inventario</a></li>
+            <li><a href="ventas.php">Ventas</a></li>
+            <li><a href="mermas.php">Mermas</a></li>
+            <li><a href="empleados.php">Empleados</a></li>
+            <li><a href="reportes.php">Reportes</a></li>
         </ul>
         <div class="user-profile"><p>Administrador</p></div>
     </aside>
 
     <main class="main-content">
         <header class="topbar">
-            <div>Módulo de Ventas</div>
-            <div>Fecha: 18 de Mayo, 2026</div>
+            <div>Gestión de Catálogo</div>
+            <div>Fecha: <?php echo date('d/m/Y'); ?></div>
         </header>
 
         <div class="page-content">
             <div class="page-header">
-                <h1>Historial de Ventas</h1>
-                <button class="btn btn-primary">Nueva Venta</button>
+                <h1>Catálogo de Productos</h1>
+                <button class="btn btn-primary">Agregar Producto</button>
             </div>
 
             <div class="card">
                 <table>
                     <thead>
                         <tr>
-                            <th>Ticket</th>
-                            <th>Fecha y Hora</th>
-                            <th>Atendió</th>
-                            <th>Total</th>
+                            <th>ID</th>
+                            <th>Descripción del Producto</th>
+                            <th>Precio Venta</th>
+                            <th>Stock</th>
                             <th>Estado</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>V-00892</td>
-                            <td>18/05/2026 14:20</td>
-                            <td>Cajero 1</td>
-                            <td>$145.50</td>
-                            <td><span class="badge badge-success">Completada</span></td>
-                            <td>
-                                <button class="btn btn-action" style="background-color: #e2e8f0; border: none; font-weight: 600; color: #000;">Ver Detalle</button>
-                                <button class="btn btn-action btn-delete">Cancelar</button>
-                            </td>
-                        </tr>
+                        <?php foreach ($productosEnSQLServer as $producto) { ?>
+                            <tr>
+                                <td><?php echo $producto['id']; ?></td>
+                                <td><?php echo $producto['nombre']; ?></td>
+                                <td>$<?php echo number_format($producto['precio'], 2); ?></td>
+                                <td><?php echo $producto['stock']; ?></td>
+                                <td><span class="badge <?php echo $producto['clase']; ?>"><?php echo $producto['estado']; ?></span></td>
+                                <td>
+                                    <button class="btn btn-action btn-edit">Editar</button>
+                                    <button class="btn btn-action btn-delete">Eliminar</button>
+                                </td>
+                            </tr>
+                        <?php } ?>
                     </tbody>
                 </table>
             </div>
