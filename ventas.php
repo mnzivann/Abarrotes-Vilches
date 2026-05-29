@@ -1,4 +1,5 @@
 <?php
+session_start();
 // Simulación de consulta a SQL Server: SELECT * FROM Ventas;
 $ventasEnSQLServer = [
     ["ticket" => "V-00892", "fecha" => "18/05/2026 14:20", "cajero" => "Cajero 1", "total" => 145.50, "estado" => "Completada", "clase" => "badge-success", "permiso_cancelar" => true]
@@ -47,11 +48,15 @@ $ventasEnSQLServer = [
         <div class="brand"><h2>Abarrotes Vilches</h2><span>Control de Sistema</span></div>
         <ul class="menu">
             <li><a href="index.php">Productos</a></li>
+            <li><a href="categorias.php">Categorías</a></li>
             <li><a href="inventario.php">Inventario</a></li>
-            <li class="active"><a href="ventas.php">Ventas</a></li>
+            <li><a href="ventas.php">Ventas</a></li>
             <li><a href="mermas.php">Mermas</a></li>
-            <li><a href="empleados.php">Empleados</a></li>
-            <li><a href="reportes.php">Reportes</a></li>
+            
+            <?php if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'Administrador'): ?>
+                <li><a href="empleados.php">Empleados</a></li>
+                <li><a href="reportes.php">Reportes</a></li>
+            <?php endif; ?>
         </ul>
         <div class="user-profile"><p>Administrador</p></div>
     </aside>

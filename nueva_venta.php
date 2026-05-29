@@ -6,177 +6,133 @@
     <title>Punto de Venta - Abarrotes Vilches</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
-        :root { --primary-color: #2563eb; --sidebar-bg: #1e293b; --sidebar-hover: #334155; --bg-color: #f1f5f9; --text-dark: #0f172a; --text-light: #64748b; --white: #ffffff; --danger: #ef4444; --success: #22c55e; --warning: #eab308; }
-        body { display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-dark); }
-        .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--white); display: flex; flex-direction: column; box-shadow: 4px 0 10px rgba(0,0,0,0.1); }
+        :root { --primary-color: #2563eb; --sidebar-bg: #1e293b; --bg-color: #f1f5f9; --white: #ffffff; --success: #22c55e; }
+        body { display: flex; height: 100vh; background-color: var(--bg-color); }
+        .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--white); display: flex; flex-direction: column; }
         .brand { padding: 24px; text-align: center; border-bottom: 1px solid #334155; }
-        .brand h2 { font-size: 1.2rem; letter-spacing: 1px; }
-        .brand span { font-size: 0.8rem; color: #94a3b8; }
         .menu { list-style: none; padding: 20px 0; flex: 1; }
-        .menu li a { display: flex; align-items: center; padding: 15px 24px; color: #cbd5e1; text-decoration: none; font-weight: 500; transition: all 0.3s ease; }
-        .menu li a:hover, .menu li.active a { background-color: var(--sidebar-hover); color: var(--white); border-left: 4px solid var(--primary-color); }
-        .user-profile { padding: 20px; background-color: #0f172a; text-align: center; font-size: 0.9rem; }
+        .menu li a { display: block; padding: 15px 24px; color: #cbd5e1; text-decoration: none; }
+        .menu li.active a { background-color: #334155; border-left: 4px solid var(--primary-color); color: white;}
         .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .topbar { background-color: var(--white); padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); z-index: 10; }
-        .page-content { padding: 40px; overflow-y: auto; flex: 1; }
-        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .page-header h1 { font-size: 1.8rem; }
+        .topbar { background-color: var(--white); padding: 20px 40px; display: flex; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .page-content { padding: 40px; display: grid; grid-template-columns: 2fr 1fr; gap: 20px; flex: 1; overflow-y: auto; }
         
-        /* Botones y Formularios */
-        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; }
-        .btn-primary { background-color: var(--primary-color); color: var(--white); }
-        .btn-primary:hover { background-color: #1d4ed8; }
-        .btn-success { background-color: var(--success); color: var(--white); }
-        .btn-success:hover { background-color: #16a34a; }
-        .btn-delete { background-color: var(--danger); color: var(--white); padding: 6px 12px; font-size: 0.85rem; border-radius: 4px; }
-        .form-control { padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem; outline: none; width: 100%; transition: 0.2s; }
-        .form-control:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
-        .qty-input { width: 60px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: center; }
-
-        /* Estructura dividida del Punto de Venta */
-        .pos-container { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; align-items: start; }
-        .card { background-color: var(--white); border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow: hidden; padding: 24px; }
+        .card { background-color: var(--white); padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .form-control { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 10px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; color: white; width: 100%; }
+        .btn-primary { background-color: var(--primary-color); }
+        .btn-success { background-color: var(--success); font-size: 1.2rem; padding: 15px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
         
-        /* Buscador de productos */
-        .search-section { margin-bottom: 20px; display: flex; gap: 10px; }
-        
-        /* Tablas */
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        thead { background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; }
-        th, td { padding: 12px 16px; text-align: left; }
-        th { color: var(--text-light); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
-        td { border-bottom: 1px solid #f1f5f9; font-size: 0.95rem; }
-        tbody tr:hover { background-color: #f8fafc; }
-
-        /* Panel de Cobro (Ticket) */
-        .ticket-panel { background-color: #f8fafc; border: 1px solid #e2e8f0; display: flex; flex-direction: column; height: 100%; }
-        .ticket-header { border-bottom: 2px dashed #cbd5e1; padding-bottom: 15px; margin-bottom: 15px; font-weight: 600; text-align: center; }
-        .ticket-items { min-height: 200px; flex: 1; }
-        .ticket-summary { border-top: 2px dashed #cbd5e1; padding-top: 20px; margin-top: 20px; }
-        .summary-row { display: flex; justify-content: space-between; margin-bottom: 10px; color: var(--text-light); font-size: 0.95rem; }
-        .total-row { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 1.5rem; font-weight: 700; color: var(--text-dark); }
-        .btn-cobrar { width: 100%; padding: 16px; font-size: 1.1rem; letter-spacing: 0.5px; }
+        .ticket-resumen { margin-top: 20px; border-top: 2px dashed #cbd5e1; padding-top: 20px; font-size: 1.2rem; }
     </style>
 </head>
 <body>
     <aside class="sidebar">
-        <div class="brand"><h2>Abarrotes Vilches</h2><span>Control de Sistema</span></div>
+        <div class="brand"><h2>Abarrotes Vilches</h2></div>
         <ul class="menu">
-            <li><a href="index.html">Productos</a></li>
-            <li><a href="inventario.html">Inventario</a></li>
-            <li class="active"><a href="ventas.html">Ventas</a></li>
-            <li><a href="mermas.html">Mermas</a></li>
-            <li><a href="empleados.html">Empleados</a></li>
-            <li><a href="reportes.html">Reportes</a></li>
+            <li><a href="index.php">Productos</a></li>
+            <li><a href="categorias.php">Categorías</a></li>
+            <li><a href="inventario.php">Inventario</a></li>
+            <li><a href="ventas.php">Ventas</a></li>
+            <li><a href="mermas.php">Mermas</a></li>
+            
+            <?php if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'Administrador'): ?>
+                <li><a href="empleados.php">Empleados</a></li>
+                <li><a href="reportes.php">Reportes</a></li>
+            <?php endif; ?>
         </ul>
-        <div class="user-profile"><p>Empleado / Cajero</p></div>
     </aside>
 
     <main class="main-content">
-        <header class="topbar">
-            <div>Módulo de Ventas - Nueva Transacción</div>
-            <div>Fecha: 18 de Mayo, 2026</div>
-        </header>
-
+        <header class="topbar"><div>Punto de Venta</div><div>Fecha: <?php echo date('d/m/Y'); ?></div></header>
         <div class="page-content">
-            <div class="page-header">
-                <h1>Punto de Venta</h1>
-                <a href="ventas.html" class="btn" style="background-color: #e2e8f0; color: #0f172a; text-decoration: none;">Volver al Historial</a>
+            
+            <div class="card">
+                <h3>Agregar Producto a Venta</h3>
+                <br>
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
+                    <div>
+                        <label>Seleccionar Producto (Simulado)</label>
+                        <select id="productoSelect" class="form-control">
+                            <option value='{"id":"PRD-001", "nombre":"Aceite Nutrioli", "precio":45.00, "stock":24}'>Aceite Nutrioli - $45.00 (Stock: 24)</option>
+                            <option value='{"id":"PRD-002", "nombre":"Frijol La Sierra", "precio":18.50, "stock":3}'>Frijol La Sierra - $18.50 (Stock: 3)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Cantidad</label>
+                        <input type="number" id="cantidadInput" class="form-control" value="1" min="1">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="agregarAlTicket()">Agregar al Ticket</button>
+                <div id="errorStock" style="color: red; margin-top: 10px; font-weight: bold; display: none;">Error: Stock insuficiente para realizar la venta.</div>
             </div>
 
-            <div class="pos-container">
-                <div class="card">
-                    <div class="search-section">
-                        <input type="text" class="form-control" placeholder="Escanear código de barras o buscar producto por nombre...">
-                        <button class="btn btn-primary">Buscar</button>
-                    </div>
-
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Producto</th>
-                                <th>Stock</th>
-                                <th>Precio</th>
-                                <th>Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>7501001</td>
-                                <td>Aceite Nutrioli 946 ml</td>
-                                <td>24</td>
-                                <td>$45.00</td>
-                                <td><button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;">Agregar</button></td>
-                            </tr>
-                            <tr>
-                                <td>7501002</td>
-                                <td>Leche Lala Entera 1L</td>
-                                <td>12</td>
-                                <td>$28.00</td>
-                                <td><button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;">Agregar</button></td>
-                            </tr>
-                            <tr>
-                                <td>7501003</td>
-                                <td>Sabritas Sal 40g</td>
-                                <td>32</td>
-                                <td>$16.00</td>
-                                <td><button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;">Agregar</button></td>
-                            </tr>
+            <div class="card">
+                <h3 style="text-align:center;">Ticket Actual</h3>
+                <table>
+                    <thead><tr><th>Cant</th><th>Producto</th><th>Subtotal</th></tr></thead>
+                    <tbody id="tablaTicket">
                         </tbody>
-                    </table>
-                </div>
-
-                <div class="card ticket-panel">
-                    <div class="ticket-header">
-                        Detalle de Venta actual
+                </table>
+                
+                <div class="ticket-resumen">
+                    <div style="display: flex; justify-content: space-between; font-weight: bold;">
+                        <span>TOTAL A COBRAR:</span>
+                        <span id="totalVenta">$0.00</span>
                     </div>
-                    
-                    <div class="ticket-items">
-                        <table style="margin-top: 0;">
-                            <thead>
-                                <tr>
-                                    <th>Cant.</th>
-                                    <th>Producto</th>
-                                    <th>Subtotal</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><input type="number" class="qty-input" value="2" min="1"></td>
-                                    <td style="font-size: 0.9rem;">Sabritas Sal 40g</td>
-                                    <td style="font-weight: 600;">$32.00</td>
-                                    <td><button class="btn btn-delete">X</button></td>
-                                </tr>
-                                <tr>
-                                    <td><input type="number" class="qty-input" value="1" min="1"></td>
-                                    <td style="font-size: 0.9rem;">Leche Lala Entera 1L</td>
-                                    <td style="font-weight: 600;">$28.00</td>
-                                    <td><button class="btn btn-delete">X</button></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="ticket-summary">
-                        <div class="summary-row">
-                            <span>Subtotal:</span>
-                            <span>$60.00</span>
-                        </div>
-                        <div class="summary-row">
-                            <span>Artículos:</span>
-                            <span>3</span>
-                        </div>
-                        <div class="total-row">
-                            <span>TOTAL:</span>
-                            <span style="color: var(--success);">$60.00</span>
-                        </div>
-                        <button class="btn btn-success btn-cobrar">Cobrar e Imprimir Ticket</button>
-                    </div>
+                    <br>
+                    <form method="POST" action="ventas.php" id="formVenta">
+                        <button type="button" class="btn btn-success" onclick="cobrarVenta()">Cobrar Venta</button>
+                    </form>
                 </div>
             </div>
         </div>
     </main>
+
+    <script>
+        let totalAcumulado = 0;
+
+        function agregarAlTicket() {
+            // 1. Obtener datos capturados
+            const productoJSON = document.getElementById('productoSelect').value;
+            const producto = JSON.parse(productoJSON);
+            const cantidad = parseInt(document.getElementById('cantidadInput').value);
+            const divError = document.getElementById('errorStock');
+
+            // 2. [RF_08] Validar stock antes de vender (stock >= cantidad)
+            if (cantidad > producto.stock) {
+                divError.style.display = 'block';
+                return; // Detiene la ejecución, no agrega al ticket
+            }
+            divError.style.display = 'none';
+
+            // 3. [RF_08] Calcular total automáticamente (cantidad * precio)
+            const subtotal = cantidad * producto.precio;
+            totalAcumulado += subtotal;
+
+            // 4. Actualizar la interfaz visual
+            const tbody = document.getElementById('tablaTicket');
+            const fila = `<tr>
+                <td>${cantidad}</td>
+                <td>${producto.nombre}</td>
+                <td>$${subtotal.toFixed(2)}</td>
+            </tr>`;
+            tbody.innerHTML += fila;
+
+            document.getElementById('totalVenta').innerText = "$" + totalAcumulado.toFixed(2);
+        }
+
+        function cobrarVenta() {
+            if(totalAcumulado === 0) {
+                alert("El ticket está vacío.");
+                return;
+            }
+            alert("Venta procesada con éxito por $" + totalAcumulado.toFixed(2));
+            // En el código real, aquí se envía el formulario al servidor para guardar en SQL
+            window.location.href = "ventas.php";
+        }
+    </script>
 </body>
 </html>
