@@ -1,6 +1,6 @@
 # Sistema de Control de Inventario y Ventas - Abarrotes Vilches
 
-Este proyecto es un sistema de gestión web desarrollado en **PHP** utilizando **Microsoft SQL Server** como sistema gestor de base de datos. El entorno completo está contenerizado con **Docker**, lo que garantiza que el sistema funcione exactamente igual en cualquier sistema operativo (Windows y macOS).
+Este proyecto es un sistema de gestión web desarrollado en **PHP** utilizando **Microsoft SQL Server** como sistema gestor de base de datos. El entorno completo está contenerizado con **Docker**, lo que garantiza que el sistema funcione exactamente igual en cualquier sistema operativo (Windows y macOS), incluyendo la instalación automatizada de los controladores ODBC de Microsoft.
 
 ---
 
@@ -17,16 +17,19 @@ Antes de comenzar, asegúrate de tener instalado lo siguiente en tu equipo:
 ## Estructura del Repositorio
 
 ```text
-├── docker-compose.yml     # Configuración de los contenedores (Servidor + BD)
+├── Dockerfile             # Configuración para instalar PHP con drivers de SQL Server
+├── docker-compose.yml     # Orquestación de los contenedores (Servidor Web + BD)
+├── database.sql           # Script de creación y población de la BD
+├── conexion.php           # Clase PDO para conexión con SQL Server
+├── login.php              # Pantalla de acceso y control de roles
 ├── index.php              # Catálogo de Productos (Pantalla Principal)
+├── categorias.php         # Gestión de Categorías
 ├── inventario.php         # Control de Entradas y Salidas
 ├── ventas.php             # Historial de Ventas
 ├── nueva_venta.php        # Punto de Venta operativo (Cajero)
 ├── mermas.php             # Registro de Pérdidas
 ├── empleados.php          # Directorio de Usuarios
-├── reportes.php           # Módulo de Reportes Gerenciales
-└── database.sql           # Script de creación y población de la BD
-
+└── reportes.php           # Módulo de Inteligencia de Negocio y Respaldo
 ```
 
 ## Instalación y Arranque del Entorno
