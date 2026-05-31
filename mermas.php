@@ -2,12 +2,12 @@
 session_start();
 
 // ============================================================================
-// LÓGICA DE MERMAS (SIMULACIÓN DE BASE DE DATOS)
+// LÓGICA DE MERMAS (SIMULACIÓN DE BASE DE DATOS) si
 // ============================================================================
 
 // [RF_16] Consultar productos en merma/caducados
 $mermasBD = [
-    ["id" => "MER-001", "producto" => "Frijol La Sierra Bayos 560g", "cantidad" => 2, "motivo" => "Empaque roto", "fecha" => "2026-05-28", "estatus" => "Activo"],
+    ["id" => "MER-001", "producto" => "Frijol La Sierra Bayos 570g", "cantidad" => 2, "motivo" => "Empaque roto", "fecha" => "2026-05-28", "estatus" => "Activo"],
     ["id" => "MER-002", "producto" => "Leche Lala Entera 1L", "cantidad" => 5, "motivo" => "Caducidad", "fecha" => "2026-05-25", "estatus" => "Inactivo"]
 ];
 
