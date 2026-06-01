@@ -14,6 +14,23 @@ Antes de comenzar, asegúrate de tener instalado lo siguiente en tu equipo:
 
 ---
 
+## Mapeo de Requerimientos Funcionales (RF)
+
+El sistema ha sido modularizado para cumplir estrictamente con la matriz de requerimientos del proyecto. A continuación se detalla qué archivo controla cada funcionalidad:
+
+| Módulo | Archivo PHP | Requerimientos Cumplidos |
+| :--- | :--- | :--- |
+| **Productos** | `index.php` | **RF_01:** Agregar Producto<br>**RF_02:** Consultar / Buscar<br>**RF_03:** Modificar Datos<br>**RF_04:** Baja Lógica (Cambio de estatus) |
+| **Inventario** | `inventario.php` | **RF_05:** Registrar Entrada<br>**RF_06:** Registrar Salida (Validando stock físico)<br>**RF_07:** Consultar Existencias |
+| **Punto de Venta** | `nueva_venta.php` | **RF_08:** Registrar Venta (Cálculo automático y validación de stock) |
+| **Historial Ventas**| `ventas.php` | **RF_09:** Consultar Historial de tickets<br>**RF_10:** Cancelar Venta |
+| **Empleados** | `empleados.php` | **RF_11:** Registrar Empleado<br>**RF_12:** Consultar / Buscar<br>**RF_13:** Actualizar Datos<br>**RF_14:** Baja Lógica |
+| **Mermas** | `mermas.php` | **RF_15:** Registrar Producto Dañado/Caducado<br>**RF_16:** Consultar Mermas<br>**RF_17:** Anular Registro de Merma |
+| **Reportes** | `reportes.php` | **RF_18:** Generar Reporte de Ingresos<br>**RNF_04:** Generar Respaldo de Base de Datos (.BAK) |
+| **Categorías** | `categorias.php` | **RF_19:** Agregar Categoría<br>**RF_20:** Consultar Categorías<br>**RF_21:** Actualizar Datos<br>**RF_22:** Baja Lógica |
+
+---
+
 ## Estructura del Repositorio
 
 ```text
@@ -31,7 +48,6 @@ Antes de comenzar, asegúrate de tener instalado lo siguiente en tu equipo:
 ├── empleados.php          # Directorio de Usuarios
 └── reportes.php           # Módulo de Inteligencia de Negocio y Respaldo
 ```
-
 ## Instalación y Arranque del Entorno
 
 Sigue estos pasos para levantar el proyecto en tu computadora local:
