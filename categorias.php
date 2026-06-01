@@ -1,10 +1,14 @@
 <?php
 session_start();
 // ============================================================================
-// LÓGICA DE CATEGORÍAS
+// MÓDULO DE CATEGORÍAS - LÓGICA DE BACKEND
 // ============================================================================
 
-// [RF_20] Consultar categorías registradas
+/**
+ * [RF_20] CATEGORÍA_CONSULTAR
+ * Descripción: Consultar categorías registradas.
+ * Validación: Mostrar datos correctamente (registros existentes).
+ */
 $categoriasBD = [
     ["id" => "CAT-01", "nombre" => "Abarrotes", "descripcion" => "Productos de despensa básica", "estatus" => "Activo"],
     ["id" => "CAT-02", "nombre" => "Limpieza", "descripcion" => "Detergentes y jabones", "estatus" => "Activo"]
@@ -15,32 +19,51 @@ $mensaje = "";
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
 
-    // [RF_19] Registrar una nueva categoría
+    /**
+     * [RF_19] CATEGORÍA_AGREGAR
+     * Descripción: Registrar una nueva categoría.
+     * Validación: Campos obligatorios no vacíos (nombre único y estatus activo).
+     */
     if ($accion === 'agregar') {
         $nombre = trim($_POST['nombre']);
         $descripcion = trim($_POST['descripcion']);
 
-        // Validación: Campos obligatorios no vacíos y nombre único (simulado)
+        // Validación estricta del Excel: Campo 'nombre' no vacío. 
+        // (Nota: Validación de "nombre único" pendiente de integración con DB real)
         if (!empty($nombre)) {
+            // TODO: Integrar INSERT INTO Categorias (nombre, descripcion, estatus) VALUES (...)
             $mensaje = "<div class='alert alert-success'>Categoría '$nombre' registrada con estatus Activo.</div>";
         } else {
-            $mensaje = "<div class='alert alert-danger'>Error: El nombre de la categoría es obligatorio.</div>";
+            $mensaje = "<div class='alert alert-danger'>Error de Validación [RF_19]: El nombre de la categoría es obligatorio.</div>";
         }
     }
 
-    // [RF_21] Actualizar datos de categoría
+    /**
+     * [RF_21] CATEGORÍA_ACTUALIZAR
+     * Descripción: Modificar datos de una categoría.
+     * Validación: Validar cambios (nombre no vacío).
+     */
     if ($accion === 'editar') {
+        // En una implementación real llegaría el ID de la categoría a actualizar
         $nombre = trim($_POST['nombre']);
+        
+        // Validación estricta del Excel
         if (!empty($nombre)) {
+            // TODO: Integrar UPDATE Categorias SET nombre = ?, descripcion = ? WHERE id = ?
             $mensaje = "<div class='alert alert-success'>Categoría actualizada correctamente.</div>";
         } else {
-            $mensaje = "<div class='alert alert-danger'>Error: El nombre no puede estar vacío.</div>";
+            $mensaje = "<div class='alert alert-danger'>Error de Validación [RF_21]: El nombre no puede estar vacío.</div>";
         }
     }
 
-    // [RF_22] Cambiar estatus de categoría (Eliminación Lógica)
+    /**
+     * [RF_22] CATEGORÍA_ELIMINAR
+     * Descripción: Cambiar estatus de una categoría en lugar de eliminarla (Baja Lógica).
+     * Validación: Confirmación antes de cambiar estatus (Manejada en el Frontend).
+     */
     if ($accion === 'cambiar_estatus') {
         $nuevo_estatus = $_POST['nuevo_estatus'];
+        // TODO: Integrar UPDATE Categorias SET estatus = ? WHERE id = ?
         $mensaje = "<div class='alert alert-warning'>El estatus de la categoría ha cambiado a $nuevo_estatus.</div>";
     }
 }
@@ -100,9 +123,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <main class="main-content">
         <header class="topbar"><div>Catálogos Adicionales</div><div>Fecha: <?php echo date('d/m/Y'); ?></div></header>
         <div class="page-content">
+            <!-- Renderizado de validaciones del servidor -->
             <?php echo $mensaje; ?>
+            
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h1>Gestión de Categorías</h1>
+                <!-- Disparador UI para RF_19 -->
                 <button class="btn btn-primary" onclick="abrirModal('modalAgregar')">+ Nueva Categoría</button>
             </div>
 
@@ -110,6 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <table>
                     <thead><tr><th>ID</th><th>Nombre</th><th>Descripción</th><th>Estatus</th><th>Acciones</th></tr></thead>
                     <tbody>
+                        <!-- Iteración para cumplir con RF_20 -->
                         <?php foreach($categoriasBD as $cat): ?>
                             <tr>
                                 <td><?php echo $cat['id']; ?></td>
@@ -117,14 +144,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <td><?php echo $cat['descripcion']; ?></td>
                                 <td style="font-weight:bold; color: <?php echo $cat['estatus'] == 'Activo' ? 'green' : 'red'; ?>"><?php echo $cat['estatus']; ?></td>
                                 <td style="display: flex; gap: 5px;">
+                                    <!-- Disparador UI para RF_21 -->
                                     <button class="btn btn-warning" style="padding: 5px 10px;" onclick="abrirModalEditar('<?php echo $cat['id']; ?>', '<?php echo $cat['nombre']; ?>', '<?php echo $cat['descripcion']; ?>')">Editar</button>
+                                    
+                                    <!-- Formulario para cumplir con RF_22 (Baja Lógica) -->
                                     <form method="POST" style="display:inline;">
                                         <input type="hidden" name="accion" value="cambiar_estatus">
                                         <?php if ($cat['estatus'] == 'Activo'): ?>
                                             <input type="hidden" name="nuevo_estatus" value="Inactivo">
+                                            <!-- Validación estricta UI: Confirmación antes de cambiar estatus -->
                                             <button type="submit" class="btn btn-danger" style="padding: 5px 10px;" onclick="return confirm('¿Desactivar esta categoría?');">Desactivar</button>
                                         <?php else: ?>
                                             <input type="hidden" name="nuevo_estatus" value="Activo">
+                                            <!-- Validación estricta UI: Confirmación antes de cambiar estatus -->
                                             <button type="submit" class="btn btn-success" style="padding: 5px 10px;" onclick="return confirm('¿Reactivar categoría?');">Activar</button>
                                         <?php endif; ?>
                                     </form>
@@ -137,13 +169,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </main>
 
+    <!-- Modal Formulario para RF_19: Registrar Categoría -->
     <div id="modalAgregar" class="modal">
         <div class="modal-content">
             <h3>Registrar Categoría</h3>
             <form method="POST" action="categorias.php">
                 <input type="hidden" name="accion" value="agregar">
+                
+                <!-- Validación UI (HTML5): Campo obligatorio (required) -->
                 <label>Nombre *</label><input type="text" name="nombre" class="form-control" required>
+                
                 <label>Descripción</label><textarea name="descripcion" class="form-control"></textarea>
+                
                 <div style="display:flex; justify-content: flex-end; gap: 10px;">
                     <button type="button" class="btn btn-danger" onclick="document.getElementById('modalAgregar').style.display='none'">Cancelar</button>
                     <button type="submit" class="btn btn-success">Guardar</button>
@@ -152,13 +189,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
+    <!-- Modal Formulario para RF_21: Actualizar Categoría -->
     <div id="modalEditar" class="modal">
         <div class="modal-content">
             <h3>Actualizar Categoría</h3>
             <form method="POST" action="categorias.php">
                 <input type="hidden" name="accion" value="editar">
+                
+                <!-- Validación UI (HTML5): Campo obligatorio (required) -->
                 <label>Nombre *</label><input type="text" name="nombre" id="edit_nombre" class="form-control" required>
+                
                 <label>Descripción</label><textarea name="descripcion" id="edit_desc" class="form-control"></textarea>
+                
                 <div style="display:flex; justify-content: flex-end; gap: 10px;">
                     <button type="button" class="btn btn-danger" onclick="document.getElementById('modalEditar').style.display='none'">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Actualizar</button>

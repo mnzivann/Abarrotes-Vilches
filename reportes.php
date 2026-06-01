@@ -1,25 +1,36 @@
 <?php
 session_start();
 // ============================================================================
-// LÓGICA DE REPORTES Y RESPALDO (SIMULACIÓN DE BASE DE DATOS)
+// MÓDULO DE REPORTES Y RESPALDOS - LÓGICA DE BACKEND
 // ============================================================================
 
-// [RF_18] Datos correctos en reportes (Ventas, productos, fechas, totales)
+/**
+ * [RF_18] REPORTE_GENERAR
+ * Descripción: Generar un reporte de venta.
+ * Validación Excel: Datos correctos en reportes. (Validar: cálculos correctos).
+ * Datos mostrados: ventas, productos, fechas, totales.
+ */
+// Simulación de consulta: SELECT ticket, fecha, productos, total FROM Ventas WHERE fecha = GETDATE();
 $ventasBD = [
     ["ticket" => "T-1001", "fecha" => "2026-05-29", "productos" => "Aceite Nutrioli (2), Frijol (1)", "total" => 108.50],
     ["ticket" => "T-1002", "fecha" => "2026-05-29", "productos" => "Detergente Foca (1)", "total" => 32.00]
 ];
 
-// Validación matemática: Calcular el total general sumando el arreglo
+// Validación matemática estricta [RF_18]: Calcular el total general sumando el arreglo de resultados
 $ingresosTotales = 0;
-foreach($ventasBD as $v) { $ingresosTotales += $v['total']; }
+foreach($ventasBD as $v) { 
+    $ingresosTotales += $v['total']; 
+}
 
 $mensaje = "";
 
-// [RN_04] Respaldo al cierre de sesión o manual
+/**
+ * [RNF_04] RESPALDO DE BASE DE DATOS (Requerimiento No Funcional)
+ * Descripción: Generar un respaldo seguro de la información.
+ */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['accion'] === 'respaldo') {
-    // Aquí Jacobo programará el script para ejecutar un BACKUP DATABASE en SQL Server
-    $mensaje = "<div class='alert alert-success'>Respaldo de la base de datos generado con éxito (.BAK).</div>";
+    // TODO: Script para ejecutar un BACKUP DATABASE AbarrotesVilchesDB TO DISK = '...' en SQL Server
+    $mensaje = "<div class='alert alert-success'> Respaldo de la base de datos generado con éxito (.BAK).</div>";
 }
 ?>
 <!DOCTYPE html>
@@ -69,8 +80,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['
     </aside>
 
     <main class="main-content">
-        <header class="topbar"><div>Inteligencia de Negocio</div>
-            <form method="POST" style="margin:0;">
+        <header class="topbar">
+            <div>Inteligencia de Negocio</div>
+            <form method="POST" style="margin:0;" onsubmit="return confirm('¿Iniciar proceso de respaldo de base de datos?');">
                 <input type="hidden" name="accion" value="respaldo">
                 <button type="submit" class="btn btn-primary">Generar Respaldo (Backup BD)</button>
             </form>
@@ -91,7 +103,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['
                 <h3>Detalle de Ventas</h3>
                 <br>
                 <table>
-                    <thead><tr><th>Ticket</th><th>Fecha</th><th>Productos Vendidos</th><th>Total de la Venta</th></tr></thead>
+                    <thead>
+                        <tr><th>Ticket</th><th>Fecha</th><th>Productos Vendidos</th><th>Total de la Venta</th></tr>
+                    </thead>
                     <tbody>
                         <?php foreach($ventasBD as $v): ?>
                             <tr>

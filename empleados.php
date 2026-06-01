@@ -1,10 +1,14 @@
 <?php
 session_start();
 // ============================================================================
-// LÓGICA DE EMPLEADOS (SIMULACIÓN DE BASE DE DATOS)
+// MÓDULO DE EMPLEADOS - LÓGICA DE BACKEND
 // ============================================================================
 
-// [RF_12] Consultar empleados registrados
+/**
+ * [RF_12] EMPLEADO_CONSULTAR
+ * Descripción: Consultar empleados registrados.
+ * Validación: Mostrar datos correctamente (registros existentes en BD).
+ */
 $empleadosBD = [
     ["id" => "EMP-01", "nombre" => "Jorge Ivan Muñiz Samano", "usuario" => "admin_jorge", "rol" => "Administrador", "estatus" => "Activo"],
     ["id" => "EMP-02", "nombre" => "Hazziel Enrique Ramirez", "usuario" => "cajero_hazziel", "rol" => "Cajero", "estatus" => "Activo"],
@@ -16,46 +20,63 @@ $mensaje = "";
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
 
-    // [RF_11] Registrar empleado
+    /**
+     * [RF_11] EMPLEADO_AGREGAR
+     * Descripción: Registrar empleados.
+     * Validación: Campos obligatorios y validar que el empleado/usuario sea único.
+     */
     if ($accion === 'agregar') {
         $nombre = $_POST['nombre'];
         $usuario = $_POST['usuario'];
         $password = $_POST['password'];
         $rol = $_POST['rol'];
 
-        // Validación: Campos obligatorios y empleado único (simulado)
+        // Validación estricta del Excel: Empleado único (Simulación)
         $existe = false;
         foreach($empleadosBD as $emp) { if($emp['usuario'] === $usuario) { $existe = true; } }
 
+        // Validación de campos obligatorios
         if (!$existe && !empty($nombre) && !empty($password)) {
-            // Aquí Jacobo hará el: INSERT INTO Empleados (nombre, usuario, password, rol, estatus) VALUES (...)
+            // TODO: Integrar INSERT INTO Empleados (nombre, usuario, password, rol, estatus) VALUES (...)
             $mensaje = "<div class='alert alert-success'>Empleado '$nombre' registrado con éxito.</div>";
         } else {
-            $mensaje = "<div class='alert alert-danger'>Error: El nombre de usuario ya existe o faltan datos.</div>";
+            $mensaje = "<div class='alert alert-danger'>Error de Validación [RF_11]: El nombre de usuario ya existe o faltan datos obligatorios.</div>";
         }
     }
 
-    // [RF_13] Modificar datos de empleado
+    /**
+     * [RF_13] EMPLEADO_ACTUALIZAR
+     * Descripción: Modificar datos de empleado.
+     * Validación: Validar cambios en registros existentes.
+     */
     if ($accion === 'editar') {
         $id = $_POST['id_empleado'];
         $nombre = $_POST['nombre'];
         $rol = $_POST['rol'];
         
-        // Aquí Hazziel hará el: UPDATE Empleados SET nombre = ?, rol = ? WHERE id = ?
-        // (Nota: La contraseña se actualizaría si no viene vacía en un flujo real)
+        // TODO: Integrar UPDATE Empleados SET nombre = ?, rol = ? WHERE id = ?
         $mensaje = "<div class='alert alert-success'>Datos del empleado actualizados correctamente.</div>";
     }
 
-    // [RF_14] Cambiar estatus de empleado (Baja lógica)
+    /**
+     * [RF_14] EMPLEADO_ELIMINAR
+     * Descripción: Cambiar estatus de empleado (Baja lógica).
+     * Validación: Requiere confirmación (Aplicada en el botón submit del Frontend).
+     */
     if ($accion === 'cambiar_estatus') {
         $id = $_POST['id_empleado'];
         $nuevo_estatus = $_POST['nuevo_estatus'];
-        // Aquí harán el: UPDATE Empleados SET estatus = ? WHERE id = ?
+        
+        // TODO: Integrar UPDATE Empleados SET estatus = ? WHERE id = ?
         $mensaje = "<div class='alert alert-warning'>El estatus del empleado ha cambiado a $nuevo_estatus.</div>";
     }
 }
 
-// Búsqueda (Filtro GET para RF_12)
+/**
+ * [RF_12] EMPLEADO_CONSULTAR (Filtro de Búsqueda)
+ * Descripción: Consultar empleados registrados mediante búsqueda.
+ * Validación: Coincidencia en búsqueda por nombre o usuario.
+ */
 $busqueda = $_GET['buscar'] ?? '';
 if (!empty($busqueda)) {
     $empleadosBD = array_filter($empleadosBD, function($e) use ($busqueda) {
@@ -147,6 +168,7 @@ if (!empty($busqueda)) {
                                 <td><span style="font-weight:bold; color: <?php echo $emp['estatus'] == 'Activo' ? 'green' : 'red'; ?>"><?php echo $emp['estatus']; ?></span></td>
                                 <td style="display: flex; gap: 5px;">
                                     <button class="btn btn-warning" style="padding: 5px 10px;" onclick="abrirModalEditar('<?php echo $emp['id']; ?>', '<?php echo $emp['nombre']; ?>', '<?php echo $emp['rol']; ?>')">Editar</button>
+                                    
                                     <form method="POST" style="display:inline;">
                                         <input type="hidden" name="accion" value="cambiar_estatus">
                                         <input type="hidden" name="id_empleado" value="<?php echo $emp['id']; ?>">

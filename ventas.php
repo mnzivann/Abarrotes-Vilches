@@ -1,9 +1,36 @@
 <?php
 session_start();
+// ============================================================================
+// MÓDULO DE VENTAS - LÓGICA DE BACKEND
+// ============================================================================
+
+/**
+ * [RF_09] VENTA_CONSULTAR
+ * Descripción: Consultar historial de ventas.
+ * Validación: Mostrar lista correctamente validando los registros existentes.
+ */
 // Simulación de consulta a SQL Server: SELECT * FROM Ventas;
 $ventasEnSQLServer = [
     ["ticket" => "V-00892", "fecha" => "18/05/2026 14:20", "cajero" => "Cajero 1", "total" => 145.50, "estado" => "Completada", "clase" => "badge-success", "permiso_cancelar" => true]
 ];
+
+$mensaje = "";
+
+/**
+ * [RF_10] VENTA_CANCELAR
+ * Descripción: Cancelar una venta registrada modificando su estado a nivel BD.
+ * Validación: Confirmación antes de cancelar (Manejada con JS en la vista).
+ */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $accion = $_POST['accion'] ?? '';
+    
+    if ($accion === 'cancelar_venta') {
+        $ticket = $_POST['ticket'];
+        // TODO: Integrar UPDATE Ventas SET estado = 'Cancelada' WHERE ticket = ?
+        // TODO: Devolver el stock a los productos (Integración con Inventario)
+        $mensaje = "<div style='padding: 15px; margin-bottom: 20px; border-radius: 6px; background-color: #fef08a; color: #854d0e;'>La venta con ticket $ticket ha sido cancelada correctamente.</div>";
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -68,6 +95,8 @@ $ventasEnSQLServer = [
         </header>
 
         <div class="page-content">
+            <?php echo $mensaje; ?>
+            
             <div class="page-header">
                 <h1>Historial de Ventas</h1>
                 <a href="nueva_venta.php" class="btn btn-primary">Nueva Venta</a>
@@ -93,10 +122,16 @@ $ventasEnSQLServer = [
                                 <td><?php echo $venta['cajero']; ?></td>
                                 <td>$<?php echo number_format($venta['total'], 2); ?></td>
                                 <td><span class="badge <?php echo $venta['clase']; ?>"><?php echo $venta['estado']; ?></span></td>
-                                <td>
+                                <td style="display: flex; gap: 5px;">
                                     <button class="btn btn-action" style="background-color: #e2e8f0; border: none; font-weight: 600; color: #000;">Ver Detalle</button>
+                                    
                                     <?php if ($venta['permiso_cancelar']) { ?>
-                                        <button class="btn btn-action btn-delete">Cancelar</button>
+                                        <form method="POST" style="display:inline;">
+                                            <input type="hidden" name="accion" value="cancelar_venta">
+                                            <input type="hidden" name="ticket" value="<?php echo $venta['ticket']; ?>">
+                                            
+                                            <button type="submit" class="btn btn-action btn-delete" onclick="return confirm('¿Estás seguro de que deseas cancelar la venta <?php echo $venta['ticket']; ?>? Esta acción regresará los productos al inventario.');">Cancelar</button>
+                                        </form>
                                     <?php } ?>
                                 </td>
                             </tr>

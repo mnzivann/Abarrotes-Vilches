@@ -1,3 +1,46 @@
+<?php
+session_start();
+// ============================================================================
+// MÓDULO DE PUNTO DE VENTA - LÓGICA DE BACKEND
+// ============================================================================
+
+// Simulación de catálogo de productos para poblar el seleccionador
+$productosBD = [
+    ["id" => "PRD-001", "nombre" => "Aceite Nutrioli 946 ml", "precio" => 45.00, "stock" => 24],
+    ["id" => "PRD-002", "nombre" => "Frijol La Sierra Bayos 560g", "precio" => 18.50, "stock" => 3]
+];
+
+$mensaje = "";
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $accion = $_POST['accion'] ?? '';
+
+    /**
+     * [RF_08] VENTA_REGISTRAR (Procesamiento Backend)
+     * Descripción: Registrar una venta de productos.
+     * Validación: Calcular total automáticamente (Guardado seguro en base de datos).
+     */
+    if ($accion === 'procesar_venta') {
+        $total_venta = floatval($_POST['total_venta']);
+        // En una implementación final, aquí también se recibiría un JSON con los productos vendidos
+        // $articulos = json_decode($_POST['lista_articulos'], true);
+
+        if ($total_venta > 0) {
+            // TODO: 1. Jacobo registrará el ticket -> INSERT INTO Ventas (total, fecha, cajero, estado) VALUES (...)
+            // TODO: 2. Iterar productos para registrar detalle -> INSERT INTO DetalleVenta (ticket, producto, cantidad, subtotal) VALUES (...)
+            // TODO: 3. Hazziel descontará el inventario -> UPDATE Productos SET stock = stock - cantidad WHERE id = ?
+            
+            $mensaje = "<div class='alert alert-success' style='padding:15px; background:#dcfce7; color:#166534; border-radius:6px; margin-bottom:20px;'>
+                             <b>¡Venta procesada con éxito!</b> El ticket ha sido registrado en la base de datos por un total de $" . number_format($total_venta, 2) . "
+                        </div>";
+        } else {
+            $mensaje = "<div class='alert alert-danger' style='padding:15px; background:#fee2e2; color:#991b1b; border-radius:6px; margin-bottom:20px;'>
+                            Error de Validación [RF_08]: No se puede procesar un ticket con total en $0.00.
+                        </div>";
+        }
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -47,45 +90,55 @@
 
     <main class="main-content">
         <header class="topbar"><div>Punto de Venta</div><div>Fecha: <?php echo date('d/m/Y'); ?></div></header>
-        <div class="page-content">
-            
-            <div class="card">
-                <h3>Agregar Producto a Venta</h3>
-                <br>
-                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
-                    <div>
-                        <label>Seleccionar Producto (Simulado)</label>
-                        <select id="productoSelect" class="form-control">
-                            <option value='{"id":"PRD-001", "nombre":"Aceite Nutrioli", "precio":45.00, "stock":24}'>Aceite Nutrioli - $45.00 (Stock: 24)</option>
-                            <option value='{"id":"PRD-002", "nombre":"Frijol La Sierra", "precio":18.50, "stock":3}'>Frijol La Sierra - $18.50 (Stock: 3)</option>
-                        </select>
+        <div class="page-content" style="display: block;"> <?php echo $mensaje; ?>
+
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+                <div class="card">
+                    <h3>Agregar Producto a Venta</h3>
+                    <br>
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
+                        <div>
+                            <label>Seleccionar Producto</label>
+                            <select id="productoSelect" class="form-control">
+                                <?php foreach($productosBD as $p): ?>
+                                    <option value='{"id":"<?php echo $p['id']; ?>", "nombre":"<?php echo $p['nombre']; ?>", "precio":<?php echo $p['precio']; ?>, "stock":<?php echo $p['stock']; ?>}'>
+                                        <?php echo $p['nombre']; ?> - $<?php echo number_format($p['precio'], 2); ?> (Stock: <?php echo $p['stock']; ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Cantidad</label>
+                            <input type="number" id="cantidadInput" class="form-control" value="1" min="1">
+                        </div>
                     </div>
-                    <div>
-                        <label>Cantidad</label>
-                        <input type="number" id="cantidadInput" class="form-control" value="1" min="1">
+                    <button class="btn btn-primary" onclick="agregarAlTicket()">Agregar al Ticket</button>
+                    <div id="errorStock" style="color: #ef4444; background-color: #fee2e2; padding: 10px; border-radius: 4px; margin-top: 10px; font-weight: bold; display: none;">
+                        Error [RF_08]: Stock insuficiente para realizar la venta.
                     </div>
                 </div>
-                <button class="btn btn-primary" onclick="agregarAlTicket()">Agregar al Ticket</button>
-                <div id="errorStock" style="color: red; margin-top: 10px; font-weight: bold; display: none;">Error: Stock insuficiente para realizar la venta.</div>
-            </div>
 
-            <div class="card">
-                <h3 style="text-align:center;">Ticket Actual</h3>
-                <table>
-                    <thead><tr><th>Cant</th><th>Producto</th><th>Subtotal</th></tr></thead>
-                    <tbody id="tablaTicket">
-                        </tbody>
-                </table>
-                
-                <div class="ticket-resumen">
-                    <div style="display: flex; justify-content: space-between; font-weight: bold;">
-                        <span>TOTAL A COBRAR:</span>
-                        <span id="totalVenta">$0.00</span>
+                <div class="card">
+                    <h3 style="text-align:center;">Ticket Actual</h3>
+                    <table>
+                        <thead><tr><th>Cant</th><th>Producto</th><th>Subtotal</th></tr></thead>
+                        <tbody id="tablaTicket">
+                            </tbody>
+                    </table>
+                    
+                    <div class="ticket-resumen">
+                        <div style="display: flex; justify-content: space-between; font-weight: bold;">
+                            <span>TOTAL A COBRAR:</span>
+                            <span id="totalVentaTexto">$0.00</span>
+                        </div>
+                        <br>
+                        
+                        <form method="POST" action="nueva_venta.php" id="formVenta">
+                            <input type="hidden" name="accion" value="procesar_venta">
+                            <input type="hidden" name="total_venta" id="inputTotalVenta" value="0">
+                            <button type="button" class="btn btn-success" onclick="cobrarVenta()">Cobrar Venta</button>
+                        </form>
                     </div>
-                    <br>
-                    <form method="POST" action="ventas.php" id="formVenta">
-                        <button type="button" class="btn btn-success" onclick="cobrarVenta()">Cobrar Venta</button>
-                    </form>
                 </div>
             </div>
         </div>
@@ -94,25 +147,27 @@
     <script>
         let totalAcumulado = 0;
 
+        /**
+         * [RF_08] VENTA_REGISTRAR (Frontend JS)
+         * Se validan las reglas de negocio en tiempo real antes de enviar al servidor.
+         */
         function agregarAlTicket() {
-            // 1. Obtener datos capturados
             const productoJSON = document.getElementById('productoSelect').value;
             const producto = JSON.parse(productoJSON);
             const cantidad = parseInt(document.getElementById('cantidadInput').value);
             const divError = document.getElementById('errorStock');
 
-            // 2. [RF_08] Validar stock antes de vender (stock >= cantidad)
+            // Validación estricta Excel: Validar stock antes de vender (stock >= cantidad)
             if (cantidad > producto.stock) {
                 divError.style.display = 'block';
-                return; // Detiene la ejecución, no agrega al ticket
+                return; // Bloquea la acción
             }
             divError.style.display = 'none';
 
-            // 3. [RF_08] Calcular total automáticamente (cantidad * precio)
+            // Cálculo requerido Excel: Calcular total automáticamente (Cálculo: total = cantidad * precio)
             const subtotal = cantidad * producto.precio;
             totalAcumulado += subtotal;
 
-            // 4. Actualizar la interfaz visual
             const tbody = document.getElementById('tablaTicket');
             const fila = `<tr>
                 <td>${cantidad}</td>
@@ -121,17 +176,19 @@
             </tr>`;
             tbody.innerHTML += fila;
 
-            document.getElementById('totalVenta').innerText = "$" + totalAcumulado.toFixed(2);
+            // Actualizar vista
+            document.getElementById('totalVentaTexto').innerText = "$" + totalAcumulado.toFixed(2);
+            // Actualizar input oculto para mandar a PHP
+            document.getElementById('inputTotalVenta').value = totalAcumulado;
         }
 
         function cobrarVenta() {
             if(totalAcumulado === 0) {
-                alert("El ticket está vacío.");
+                alert("No puedes cobrar un ticket vacío.");
                 return;
             }
-            alert("Venta procesada con éxito por $" + totalAcumulado.toFixed(2));
-            // En el código real, aquí se envía el formulario al servidor para guardar en SQL
-            window.location.href = "ventas.php";
+            // En lugar de redirigir, enviamos los datos procesados al servidor PHP para realizar el INSERT/UPDATE en SQL Server
+            document.getElementById('formVenta').submit();
         }
     </script>
 </body>

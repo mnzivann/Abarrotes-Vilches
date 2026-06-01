@@ -1,11 +1,14 @@
 <?php
 session_start();
-
 // ============================================================================
-// LÓGICA DE MERMAS (SIMULACIÓN DE BASE DE DATOS) si
+// MÓDULO DE MERMAS - LÓGICA DE BACKEND
 // ============================================================================
 
-// [RF_16] Consultar productos en merma/caducados
+/**
+ * [RF_16] MERMA_CONSULTAR
+ * Descripción: Consultar productos en merma/caducados.
+ * Validación: Mostrar datos correctos (registros existentes).
+ */
 $mermasBD = [
     ["id" => "MER-001", "producto" => "Frijol La Sierra Bayos 570g", "cantidad" => 2, "motivo" => "Empaque roto", "fecha" => "2026-05-28", "estatus" => "Activo"],
     ["id" => "MER-002", "producto" => "Leche Lala Entera 1L", "cantidad" => 5, "motivo" => "Caducidad", "fecha" => "2026-05-25", "estatus" => "Inactivo"]
@@ -16,26 +19,35 @@ $mensaje = "";
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
 
-    // [RF_15] Registrar productos dañados
+    /**
+     * [RF_15] MERMA_REGISTRAR
+     * Descripción: Registrar productos dañados o caducados.
+     * Validación: Cantidad válida (Validar: cantidad > 0).
+     */
     if ($accion === 'registrar') {
         $producto = $_POST['producto'];
         $cantidad = intval($_POST['cantidad']);
         $motivo = $_POST['motivo'];
         
-        // Validación: Cantidad válida > 0
+        // Cumplimiento de regla de negocio: cantidad > 0 y campos no vacíos
         if ($cantidad > 0 && !empty($producto) && !empty($motivo)) {
-            // Aquí Jacobo hará el: INSERT INTO Mermas (producto, cantidad, motivo, fecha, estatus) VALUES (...)
+            // TODO: Integrar INSERT INTO Mermas (producto, cantidad, motivo, fecha, estatus) VALUES (...)
             $mensaje = "<div class='alert alert-success'>Merma registrada correctamente.</div>";
         } else {
-            $mensaje = "<div class='alert alert-danger'>Error: La cantidad debe ser mayor a 0 y todos los campos son obligatorios.</div>";
+            $mensaje = "<div class='alert alert-danger'>Error de Validación [RF_15]: La cantidad debe ser mayor a 0 y todos los campos son obligatorios.</div>";
         }
     }
 
-    // [RF_17] Cambiar estatus de registro de merma (Baja lógica)
+    /**
+     * [RF_17] MERMA_ELIMINAR
+     * Descripción: Cambiar el estatus de un registro de merma (estatus activo e inactivo).
+     * Validación: Confirmación antes de cambiar el estatus (validar si el registro existe).
+     */
     if ($accion === 'cambiar_estatus') {
         $id = $_POST['id_merma'];
         $nuevo_estatus = $_POST['nuevo_estatus'];
-        // Aquí harán el: UPDATE Mermas SET estatus = ? WHERE id = ?
+        
+        // TODO: Integrar UPDATE Mermas SET estatus = ? WHERE id = ?
         $mensaje = "<div class='alert alert-warning'>El registro de merma se actualizó a $nuevo_estatus.</div>";
     }
 }
@@ -95,10 +107,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <main class="main-content">
         <header class="topbar"><div>Control de Pérdidas</div><div>Fecha: <?php echo date('d/m/Y'); ?></div></header>
         <div class="page-content">
+            <!-- Renderizado de validaciones RF_15 y RF_17 -->
             <?php echo $mensaje; ?>
 
             <div class="page-header">
                 <h1>Registro de Mermas y Caducidad</h1>
+                <!-- Disparador UI para RF_15 -->
                 <button class="btn btn-danger" onclick="document.getElementById('modalMerma').style.display='flex'">+ Registrar Merma</button>
             </div>
 
@@ -108,6 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <tr><th>ID</th><th>Producto</th><th>Cantidad</th><th>Motivo</th><th>Fecha</th><th>Estatus</th><th>Acciones</th></tr>
                     </thead>
                     <tbody>
+                        <!-- Iteración para cumplir con RF_16 -->
                         <?php foreach ($mermasBD as $merma): ?>
                             <tr>
                                 <td><?php echo $merma['id']; ?></td>
@@ -117,14 +132,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <td><?php echo $merma['fecha']; ?></td>
                                 <td><span style="font-weight:bold; color: <?php echo $merma['estatus'] == 'Activo' ? 'green' : 'red'; ?>"><?php echo $merma['estatus']; ?></span></td>
                                 <td>
+                                    <!-- Formulario para cumplir con RF_17 (Baja Lógica) -->
                                     <form method="POST" style="display:inline;">
                                         <input type="hidden" name="accion" value="cambiar_estatus">
                                         <input type="hidden" name="id_merma" value="<?php echo $merma['id']; ?>">
                                         <?php if ($merma['estatus'] == 'Activo'): ?>
                                             <input type="hidden" name="nuevo_estatus" value="Inactivo">
+                                            <!-- Validación estricta UI: Confirmación antes de cambiar estatus -->
                                             <button type="submit" class="btn btn-danger" style="padding: 5px 10px;" onclick="return confirm('¿Anular este registro de merma?');">Anular</button>
                                         <?php else: ?>
                                             <input type="hidden" name="nuevo_estatus" value="Activo">
+                                            <!-- Validación estricta UI: Confirmación antes de cambiar estatus -->
                                             <button type="submit" class="btn btn-success" style="padding: 5px 10px;" onclick="return confirm('¿Restaurar registro?');">Restaurar</button>
                                         <?php endif; ?>
                                     </form>
@@ -137,24 +155,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </main>
 
+    <!-- Modal Formulario para RF_15: Registrar Merma -->
     <div id="modalMerma" class="modal">
         <div class="modal-content">
             <h3>Reportar Producto Dañado</h3>
             <form method="POST" action="mermas.php">
                 <input type="hidden" name="accion" value="registrar">
+                
                 <label>Producto *</label>
                 <select name="producto" class="form-control" required>
                     <option value="Aceite Nutrioli 946 ml">Aceite Nutrioli 946 ml</option>
                     <option value="Frijol La Sierra Bayos 560g">Frijol La Sierra Bayos 560g</option>
                 </select>
+                
+                <!-- Validación de UI para RF_15 (Min = 1) -->
                 <label>Cantidad (Mayor a 0) *</label>
                 <input type="number" name="cantidad" min="1" class="form-control" required>
+                
                 <label>Motivo *</label>
                 <select name="motivo" class="form-control" required>
                     <option value="Caducidad">Caducidad</option>
                     <option value="Empaque Roto">Empaque Roto</option>
                     <option value="Dañado en transporte">Dañado en transporte</option>
                 </select>
+                
                 <div style="display:flex; justify-content: flex-end; gap: 10px;">
                     <button type="button" class="btn btn-primary" style="background-color:gray;" onclick="document.getElementById('modalMerma').style.display='none'">Cancelar</button>
                     <button type="submit" class="btn btn-danger">Confirmar Merma</button>

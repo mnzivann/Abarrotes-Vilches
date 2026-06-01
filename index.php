@@ -1,63 +1,84 @@
 <?php
 session_start();
 // ============================================================================
-// LÓGICA DE BACKEND (CONTROLADOR SIMULADO)
+// MÓDULO DE PRODUCTOS - LÓGICA DE BACKEND (CONTROLADOR SIMULADO)
 // ============================================================================
 
-// 1. Simulación de la Base de Datos (Esto será un SELECT en el futuro)
+/**
+ * [RF_07] INVENTARIO CONSULTAR (Base base para productos)
+ * Simulación de la Base de Datos.
+ * En la integración final, esto será reemplazado por un SELECT a SQL Server.
+ */
 $productosBD = [
     ["id" => "PRD-001", "nombre" => "Aceite Nutrioli 946 ml", "categoria" => "Abarrotes", "precio" => 45.00, "stock" => 24, "estatus" => "Activo"],
     ["id" => "PRD-002", "nombre" => "Frijol La Sierra Bayos 560g", "categoria" => "Abarrotes", "precio" => 18.50, "stock" => 3, "estatus" => "Activo"],
     ["id" => "PRD-003", "nombre" => "Detergente Foca 1Kg", "categoria" => "Limpieza", "precio" => 32.00, "stock" => 0, "estatus" => "Inactivo"]
 ];
 
-$mensaje = ""; // Para mostrar alertas al usuario
+$mensaje = ""; // Variable para renderizar alertas en la Interfaz de Usuario
 
 // PROCESAMIENTO DE FORMULARIOS (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
 
-    // [RF_01] AGREGAR PRODUCTO
+    /**
+     * [RF_01] PRODUCTO_AGREGAR
+     * Descripción: El usuario captura los datos y da clic en "Agregar".
+     * Validaciones aplicadas: Campos no vacíos, precio > 0, stock >= 0.
+     */
     if ($accion === 'agregar') {
         $nombre = $_POST['nombre'];
         $categoria = $_POST['categoria'];
         $precio = floatval($_POST['precio']);
         $stock = intval($_POST['stock']);
 
-        // Validación estricta del Excel: precio > 0 y stock >= 0
+        // Cumplimiento estricto de la regla de negocio del Excel
         if ($precio > 0 && $stock >= 0 && !empty($nombre)) {
-            // Aquí Jacobo hará el: INSERT INTO Productos (...) VALUES (...)
+            // TODO: Integrar consulta INSERT INTO Productos (...) VALUES (...)
             $mensaje = "<div class='alert alert-success'>Producto '$nombre' agregado correctamente.</div>";
         } else {
-            $mensaje = "<div class='alert alert-danger'>Error: Verifica que el precio sea mayor a 0 y el stock no sea negativo.</div>";
+            $mensaje = "<div class='alert alert-danger'>Error de Validación: Verifica que el precio sea mayor a 0 y el stock no sea negativo.</div>";
         }
     }
 
-    // [RF_03] MODIFICAR PRODUCTO
+    /**
+     * [RF_03] PRODUCTO_MODIFICAR
+     * Descripción: El usuario selecciona un producto y modifica sus datos.
+     * Validaciones aplicadas: precio > 0, stock >= 0 antes de guardar.
+     */
     if ($accion === 'editar') {
         $id = $_POST['id_producto'];
         $precio = floatval($_POST['precio']);
         $stock = intval($_POST['stock']);
         
         if ($precio > 0 && $stock >= 0) {
-            // Aquí Hazziel hará el: UPDATE Productos SET precio = ?, stock = ? WHERE id = ?
+            // TODO: Integrar consulta UPDATE Productos SET precio = ?, stock = ? WHERE id = ?
             $mensaje = "<div class='alert alert-success'>Producto actualizado correctamente.</div>";
         }
     }
 
-    // [RF_04] ELIMINAR (BAJA LÓGICA)
+    /**
+     * [RF_04] PRODUCTO_ELIMINAR
+     * Descripción: El usuario cambia el estatus de un producto en lugar de eliminarlo de la BD (Baja Lógica).
+     * Validaciones aplicadas: Confirmación en el frontend antes de procesar el cambio.
+     */
     if ($accion === 'cambiar_estatus') {
         $id = $_POST['id_producto'];
         $nuevo_estatus = $_POST['nuevo_estatus'];
-        // Aquí harán el: UPDATE Productos SET estatus = 'Inactivo' WHERE id = ?
+        // TODO: Integrar consulta UPDATE Productos SET estatus = ? WHERE id = ?
         $mensaje = "<div class='alert alert-warning'>El estatus del producto ha cambiado a $nuevo_estatus.</div>";
     }
 }
 
-// [RF_02] CONSULTAR PRODUCTO (BÚSQUEDA GET)
+/**
+ * [RF_02] PRODUCTO_CONSULTAR
+ * Descripción: El usuario busca productos por nombre o categoría y el sistema muestra los resultados.
+ * Validaciones aplicadas: Coincidencia de nombre o categoría (Búsqueda GET).
+ */
 $busqueda = $_GET['buscar'] ?? '';
 if (!empty($busqueda)) {
-    // Simulamos el filtro. En SQL Server será: SELECT * FROM Productos WHERE nombre LIKE '%$busqueda%' OR categoria LIKE '%$busqueda%'
+    // Simulación del filtro LIKE. 
+    // En SQL Server será: SELECT * FROM Productos WHERE nombre LIKE '%$busqueda%' OR categoria LIKE '%$busqueda%'
     $productosBD = array_filter($productosBD, function($p) use ($busqueda) {
         return stripos($p['nombre'], $busqueda) !== false || stripos($p['categoria'], $busqueda) !== false;
     });
@@ -74,7 +95,7 @@ if (!empty($busqueda)) {
         :root { --primary-color: #2563eb; --sidebar-bg: #1e293b; --bg-color: #f1f5f9; --text-dark: #0f172a; --white: #ffffff; --danger: #ef4444; --success: #22c55e; --warning: #eab308; }
         body { display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-dark); }
         
-        /* Sidebar y Topbar (Igual que antes) */
+        /* Sidebar y Topbar */
         .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--white); display: flex; flex-direction: column; }
         .brand { padding: 24px; text-align: center; border-bottom: 1px solid #334155; }
         .menu { list-style: none; padding: 20px 0; flex: 1; }
@@ -201,7 +222,7 @@ if (!empty($busqueda)) {
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <tr><td colspan="7" style="text-align:center;">No se encontraron productos.</td></tr>
+                            <tr><td colspan="7" style="text-align:center;">No se encontraron productos coincidentes.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -269,6 +290,7 @@ if (!empty($busqueda)) {
     </div>
 
     <script>
+        // Funciones de control de UI para Modales
         function abrirModal(id) {
             document.getElementById(id).style.display = 'flex';
         }
