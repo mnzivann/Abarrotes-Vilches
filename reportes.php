@@ -1,26 +1,11 @@
 <?php
 session_start();
+require_once 'conexion.php'; 
+$conn = Conexion::conectar(); 
+
 // ============================================================================
 // MÓDULO DE REPORTES Y RESPALDOS - LÓGICA DE BACKEND
 // ============================================================================
-
-/**
- * [RF_18] REPORTE_GENERAR
- * Descripción: Generar un reporte de venta.
- * Validación Excel: Datos correctos en reportes. (Validar: cálculos correctos).
- * Datos mostrados: ventas, productos, fechas, totales.
- */
-// Simulación de consulta: SELECT ticket, fecha, productos, total FROM Ventas WHERE fecha = GETDATE();
-$ventasBD = [
-    ["ticket" => "T-1001", "fecha" => "2026-05-29", "productos" => "Aceite Nutrioli (2), Frijol (1)", "total" => 108.50],
-    ["ticket" => "T-1002", "fecha" => "2026-05-29", "productos" => "Detergente Foca (1)", "total" => 32.00]
-];
-
-// Validación matemática estricta [RF_18]: Calcular el total general sumando el arreglo de resultados
-$ingresosTotales = 0;
-foreach($ventasBD as $v) { 
-    $ingresosTotales += $v['total']; 
-}
 
 $mensaje = "";
 
@@ -29,9 +14,57 @@ $mensaje = "";
  * Descripción: Generar un respaldo seguro de la información.
  */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['accion'] === 'respaldo') {
-    // TODO: Script para ejecutar un BACKUP DATABASE AbarrotesVilchesDB TO DISK = '...' en SQL Server
-    $mensaje = "<div class='alert alert-success'> Respaldo de la base de datos generado con éxito (.BAK).</div>";
+    try {
+        // Ruta interna del contenedor de Docker donde SQL Server tiene permisos de escritura
+        $ruta_respaldo = '/var/opt/mssql/data/AbarrotesVilches_Respaldo_' . date('Ymd_His') . '.bak';
+        
+        // Ejecutamos el comando nativo de Microsoft SQL Server para respaldos
+        $sqlBackup = "BACKUP DATABASE AbarrotesVilchesDB TO DISK = '$ruta_respaldo' WITH FORMAT, INIT";
+        $conn->exec($sqlBackup);
+        
+        $mensaje = "<div class='alert alert-success'>✅ <b>Respaldo generado con éxito.</b><br>El archivo se guardó de forma segura en el servidor de base de datos como: <code>$ruta_respaldo</code></div>";
+    } catch(PDOException $e) {
+        $mensaje = "<div class='alert alert-danger'>❌ <b>Error al generar el respaldo:</b> " . $e->getMessage() . "</div>";
+    }
 }
+
+/**
+ * [RF_18] REPORTE_GENERAR (SELECT COMPLEJO CON JOINS Y STRING_AGG)
+ * Descripción: Generar un reporte de venta con productos concatenados.
+ */
+try {
+    // Usamos STRING_AGG para concatenar los nombres y cantidades de productos de un mismo ticket en una sola fila
+    $sqlReporte = "
+        SELECT 
+            v.ticket, 
+            v.fecha, 
+            v.total,
+            STRING_AGG(p.nombre + ' (' + CAST(dv.cantidad AS VARCHAR) + ')', ', ') AS productos
+        FROM Ventas v
+        INNER JOIN DetalleVenta dv ON v.ticket = dv.ticket
+        INNER JOIN Productos p ON dv.id_producto = p.id_producto
+        WHERE v.estado = 'Completada'
+        GROUP BY v.ticket, v.fecha, v.total
+        ORDER BY v.fecha DESC
+    ";
+    
+    $stmt = $conn->query($sqlReporte);
+    $ventasBD = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+} catch(PDOException $e) {
+    $ventasBD = [];
+    $mensaje = "<div class='alert alert-danger'>Error al cargar el reporte: " . $e->getMessage() . "</div>";
+}
+
+// Validación matemática estricta [RF_18]: Calcular el total general sumando el arreglo de resultados reales
+$ingresosTotales = 0;
+foreach($ventasBD as &$v) { 
+    $ingresosTotales += $v['total']; 
+    // Damos formato a la fecha de SQL Server a un formato más legible
+    $v['fecha'] = date('d/m/Y H:i', strtotime($v['fecha']));
+}
+unset($v);
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -59,12 +92,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
         .alert { padding: 15px; margin-bottom: 20px; border-radius: 6px; }
         .alert-success { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .alert-danger { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
         .metric { font-size: 2rem; font-weight: bold; color: var(--success); }
     </style>
 </head>
 <body>
     <aside class="sidebar">
-        <div class="brand"><h2>Abarrotes Vilches</h2></div>
+        <div class="brand"><h2>Abarrotes Vilches</h2><span>Control de Sistema</span></div>
         <ul class="menu">
             <li><a href="index.php">Productos</a></li>
             <li><a href="categorias.php">Categorías</a></li>
@@ -77,12 +111,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['
                 <li><a href="reportes.php">Reportes</a></li>
             <?php endif; ?>
         </ul>
-    </aside>
+        
+        <div class="user-profile" style="padding: 20px; background-color: #0f172a; text-align: center; border-top: 1px solid #334155;">
+            <p style="margin-bottom: 10px; color: #cbd5e1; font-size: 0.9rem;">
+                👤 <?php echo $_SESSION['usuario'] ?? 'Usuario'; ?> (<?php echo $_SESSION['rol'] ?? 'Rol'; ?>)
+            </p>
+            <a href="logout.php" style="display: block; background-color: #ef4444; color: white; text-decoration: none; padding: 8px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; transition: 0.2s;">
+                Cerrar Sesión
+            </a>
+        </div>
+        </aside>
 
     <main class="main-content">
         <header class="topbar">
             <div>Inteligencia de Negocio</div>
-            <form method="POST" style="margin:0;" onsubmit="return confirm('¿Iniciar proceso de respaldo de base de datos?');">
+            <form method="POST" style="margin:0;" onsubmit="return confirm('¿Iniciar proceso de respaldo de la base de datos SQL Server?');">
                 <input type="hidden" name="accion" value="respaldo">
                 <button type="submit" class="btn btn-primary">Generar Respaldo (Backup BD)</button>
             </form>
@@ -93,28 +136,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['
             
             <div class="card" style="display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--success);">
                 <div>
-                    <h3>Ingresos Totales (Cálculo Automático)</h3>
-                    <p>Reporte del día actual</p>
+                    <h3>Ingresos Totales Históricos</h3>
+                    <p>Suma calculada automáticamente de tickets completados</p>
                 </div>
                 <div class="metric">$<?php echo number_format($ingresosTotales, 2); ?></div>
             </div>
 
             <div class="card">
-                <h3>Detalle de Ventas</h3>
+                <h3>Detalle de Ventas Consolidadas</h3>
                 <br>
                 <table>
                     <thead>
                         <tr><th>Ticket</th><th>Fecha</th><th>Productos Vendidos</th><th>Total de la Venta</th></tr>
                     </thead>
                     <tbody>
-                        <?php foreach($ventasBD as $v): ?>
-                            <tr>
-                                <td><?php echo $v['ticket']; ?></td>
-                                <td><?php echo $v['fecha']; ?></td>
-                                <td><?php echo $v['productos']; ?></td>
-                                <td style="font-weight:bold;">$<?php echo number_format($v['total'], 2); ?></td>
-                            </tr>
-                        <?php endforeach; ?>
+                        <?php if(count($ventasBD) > 0): ?>
+                            <?php foreach($ventasBD as $v): ?>
+                                <tr>
+                                    <td><?php echo $v['ticket']; ?></td>
+                                    <td><?php echo $v['fecha']; ?></td>
+                                    <td><?php echo htmlspecialchars($v['productos']); ?></td>
+                                    <td style="font-weight:bold;">$<?php echo number_format($v['total'], 2); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr><td colspan="4" style="text-align: center;">No hay ventas registradas o completadas.</td></tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>

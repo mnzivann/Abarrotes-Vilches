@@ -1,18 +1,11 @@
 <?php
 session_start();
+require_once 'conexion.php'; 
+$conn = Conexion::conectar(); 
+
 // ============================================================================
 // MÓDULO DE CATEGORÍAS - LÓGICA DE BACKEND
 // ============================================================================
-
-/**
- * [RF_20] CATEGORÍA_CONSULTAR
- * Descripción: Consultar categorías registradas.
- * Validación: Mostrar datos correctamente (registros existentes).
- */
-$categoriasBD = [
-    ["id" => "CAT-01", "nombre" => "Abarrotes", "descripcion" => "Productos de despensa básica", "estatus" => "Activo"],
-    ["id" => "CAT-02", "nombre" => "Limpieza", "descripcion" => "Detergentes y jabones", "estatus" => "Activo"]
-];
 
 $mensaje = "";
 
@@ -21,18 +14,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     /**
      * [RF_19] CATEGORÍA_AGREGAR
-     * Descripción: Registrar una nueva categoría.
-     * Validación: Campos obligatorios no vacíos (nombre único y estatus activo).
      */
     if ($accion === 'agregar') {
         $nombre = trim($_POST['nombre']);
         $descripcion = trim($_POST['descripcion']);
+        
+        // Generamos un ID de categoría
+        $id_categoria = "CAT-" . rand(100, 999);
 
-        // Validación estricta del Excel: Campo 'nombre' no vacío. 
-        // (Nota: Validación de "nombre único" pendiente de integración con DB real)
         if (!empty($nombre)) {
-            // TODO: Integrar INSERT INTO Categorias (nombre, descripcion, estatus) VALUES (...)
-            $mensaje = "<div class='alert alert-success'>Categoría '$nombre' registrada con estatus Activo.</div>";
+            try {
+                $sql = "INSERT INTO Categorias (id_categoria, nombre, descripcion, estatus) VALUES (?, ?, ?, 'Activo')";
+                $stmt = $conn->prepare($sql);
+                $stmt->execute([$id_categoria, $nombre, $descripcion]);
+                
+                $mensaje = "<div class='alert alert-success'>Categoría '$nombre' registrada con estatus Activo en la BD.</div>";
+            } catch(PDOException $e) {
+                $mensaje = "<div class='alert alert-danger'>Error al registrar: " . $e->getMessage() . "</div>";
+            }
         } else {
             $mensaje = "<div class='alert alert-danger'>Error de Validación [RF_19]: El nombre de la categoría es obligatorio.</div>";
         }
@@ -40,33 +39,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     /**
      * [RF_21] CATEGORÍA_ACTUALIZAR
-     * Descripción: Modificar datos de una categoría.
-     * Validación: Validar cambios (nombre no vacío).
      */
     if ($accion === 'editar') {
-        // En una implementación real llegaría el ID de la categoría a actualizar
+        $id = $_POST['id_categoria'];
         $nombre = trim($_POST['nombre']);
+        $descripcion = trim($_POST['descripcion']);
         
-        // Validación estricta del Excel
-        if (!empty($nombre)) {
-            // TODO: Integrar UPDATE Categorias SET nombre = ?, descripcion = ? WHERE id = ?
-            $mensaje = "<div class='alert alert-success'>Categoría actualizada correctamente.</div>";
+        if (!empty($nombre) && !empty($id)) {
+            try {
+                $sql = "UPDATE Categorias SET nombre = ?, descripcion = ? WHERE id_categoria = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->execute([$nombre, $descripcion, $id]);
+                
+                $mensaje = "<div class='alert alert-success'>Categoría actualizada correctamente.</div>";
+            } catch(PDOException $e) {
+                $mensaje = "<div class='alert alert-danger'>Error al actualizar: " . $e->getMessage() . "</div>";
+            }
         } else {
             $mensaje = "<div class='alert alert-danger'>Error de Validación [RF_21]: El nombre no puede estar vacío.</div>";
         }
     }
 
     /**
-     * [RF_22] CATEGORÍA_ELIMINAR
-     * Descripción: Cambiar estatus de una categoría en lugar de eliminarla (Baja Lógica).
-     * Validación: Confirmación antes de cambiar estatus (Manejada en el Frontend).
+     * [RF_22] CATEGORÍA_ELIMINAR (Baja Lógica)
      */
     if ($accion === 'cambiar_estatus') {
+        $id = $_POST['id_categoria'];
         $nuevo_estatus = $_POST['nuevo_estatus'];
-        // TODO: Integrar UPDATE Categorias SET estatus = ? WHERE id = ?
-        $mensaje = "<div class='alert alert-warning'>El estatus de la categoría ha cambiado a $nuevo_estatus.</div>";
+        
+        try {
+            $sql = "UPDATE Categorias SET estatus = ? WHERE id_categoria = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->execute([$nuevo_estatus, $id]);
+            
+            $mensaje = "<div class='alert alert-warning'>El estatus de la categoría ha cambiado a $nuevo_estatus.</div>";
+        } catch(PDOException $e) {
+            $mensaje = "<div class='alert alert-danger'>Error al cambiar estatus: " . $e->getMessage() . "</div>";
+        }
     }
 }
+
+// ============================================================================
+// [RF_20] CATEGORÍA_CONSULTAR (SELECT REAL)
+// ============================================================================
+$sql = "SELECT id_categoria AS id, nombre, descripcion, estatus FROM Categorias";
+$stmt = $conn->query($sql);
+$categoriasBD = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -105,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
     <aside class="sidebar">
-        <div class="brand"><h2>Abarrotes Vilches</h2></div>
+        <div class="brand"><h2>Abarrotes Vilches</h2><span>Control de Sistema</span></div>
         <ul class="menu">
             <li><a href="index.php">Productos</a></li>
             <li><a href="categorias.php">Categorías</a></li>
@@ -118,17 +137,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <li><a href="reportes.php">Reportes</a></li>
             <?php endif; ?>
         </ul>
-    </aside>
+        
+        <div class="user-profile" style="padding: 20px; background-color: #0f172a; text-align: center; border-top: 1px solid #334155;">
+            <p style="margin-bottom: 10px; color: #cbd5e1; font-size: 0.9rem;">
+                👤 <?php echo $_SESSION['usuario'] ?? 'Usuario'; ?> (<?php echo $_SESSION['rol'] ?? 'Rol'; ?>)
+            </p>
+            <a href="logout.php" style="display: block; background-color: #ef4444; color: white; text-decoration: none; padding: 8px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; transition: 0.2s;">
+                Cerrar Sesión
+            </a>
+        </div>
+        </aside>
 
     <main class="main-content">
         <header class="topbar"><div>Catálogos Adicionales</div><div>Fecha: <?php echo date('d/m/Y'); ?></div></header>
         <div class="page-content">
-            <!-- Renderizado de validaciones del servidor -->
             <?php echo $mensaje; ?>
             
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h1>Gestión de Categorías</h1>
-                <!-- Disparador UI para RF_19 -->
                 <button class="btn btn-primary" onclick="abrirModal('modalAgregar')">+ Nueva Categoría</button>
             </div>
 
@@ -136,27 +162,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <table>
                     <thead><tr><th>ID</th><th>Nombre</th><th>Descripción</th><th>Estatus</th><th>Acciones</th></tr></thead>
                     <tbody>
-                        <!-- Iteración para cumplir con RF_20 -->
                         <?php foreach($categoriasBD as $cat): ?>
                             <tr>
                                 <td><?php echo $cat['id']; ?></td>
-                                <td><?php echo $cat['nombre']; ?></td>
-                                <td><?php echo $cat['descripcion']; ?></td>
+                                <td><?php echo htmlspecialchars($cat['nombre']); ?></td>
+                                <td><?php echo htmlspecialchars($cat['descripcion']); ?></td>
                                 <td style="font-weight:bold; color: <?php echo $cat['estatus'] == 'Activo' ? 'green' : 'red'; ?>"><?php echo $cat['estatus']; ?></td>
                                 <td style="display: flex; gap: 5px;">
-                                    <!-- Disparador UI para RF_21 -->
-                                    <button class="btn btn-warning" style="padding: 5px 10px;" onclick="abrirModalEditar('<?php echo $cat['id']; ?>', '<?php echo $cat['nombre']; ?>', '<?php echo $cat['descripcion']; ?>')">Editar</button>
+                                    <button class="btn btn-warning" style="padding: 5px 10px;" onclick="abrirModalEditar('<?php echo $cat['id']; ?>', '<?php echo htmlspecialchars(addslashes($cat['nombre'])); ?>', '<?php echo htmlspecialchars(addslashes($cat['descripcion'])); ?>')">Editar</button>
                                     
-                                    <!-- Formulario para cumplir con RF_22 (Baja Lógica) -->
                                     <form method="POST" style="display:inline;">
                                         <input type="hidden" name="accion" value="cambiar_estatus">
+                                        <input type="hidden" name="id_categoria" value="<?php echo $cat['id']; ?>">
                                         <?php if ($cat['estatus'] == 'Activo'): ?>
                                             <input type="hidden" name="nuevo_estatus" value="Inactivo">
-                                            <!-- Validación estricta UI: Confirmación antes de cambiar estatus -->
                                             <button type="submit" class="btn btn-danger" style="padding: 5px 10px;" onclick="return confirm('¿Desactivar esta categoría?');">Desactivar</button>
                                         <?php else: ?>
                                             <input type="hidden" name="nuevo_estatus" value="Activo">
-                                            <!-- Validación estricta UI: Confirmación antes de cambiar estatus -->
                                             <button type="submit" class="btn btn-success" style="padding: 5px 10px;" onclick="return confirm('¿Reactivar categoría?');">Activar</button>
                                         <?php endif; ?>
                                     </form>
@@ -169,18 +191,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </main>
 
-    <!-- Modal Formulario para RF_19: Registrar Categoría -->
     <div id="modalAgregar" class="modal">
         <div class="modal-content">
             <h3>Registrar Categoría</h3>
             <form method="POST" action="categorias.php">
                 <input type="hidden" name="accion" value="agregar">
-                
-                <!-- Validación UI (HTML5): Campo obligatorio (required) -->
                 <label>Nombre *</label><input type="text" name="nombre" class="form-control" required>
-                
                 <label>Descripción</label><textarea name="descripcion" class="form-control"></textarea>
-                
                 <div style="display:flex; justify-content: flex-end; gap: 10px;">
                     <button type="button" class="btn btn-danger" onclick="document.getElementById('modalAgregar').style.display='none'">Cancelar</button>
                     <button type="submit" class="btn btn-success">Guardar</button>
@@ -189,18 +206,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
-    <!-- Modal Formulario para RF_21: Actualizar Categoría -->
     <div id="modalEditar" class="modal">
         <div class="modal-content">
             <h3>Actualizar Categoría</h3>
             <form method="POST" action="categorias.php">
                 <input type="hidden" name="accion" value="editar">
-                
-                <!-- Validación UI (HTML5): Campo obligatorio (required) -->
+                <input type="hidden" name="id_categoria" id="edit_id">
                 <label>Nombre *</label><input type="text" name="nombre" id="edit_nombre" class="form-control" required>
-                
                 <label>Descripción</label><textarea name="descripcion" id="edit_desc" class="form-control"></textarea>
-                
                 <div style="display:flex; justify-content: flex-end; gap: 10px;">
                     <button type="button" class="btn btn-danger" onclick="document.getElementById('modalEditar').style.display='none'">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Actualizar</button>
@@ -212,6 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script>
         function abrirModal(id) { document.getElementById(id).style.display = 'flex'; }
         function abrirModalEditar(id, nombre, desc) {
+            document.getElementById('edit_id').value = id;
             document.getElementById('edit_nombre').value = nombre;
             document.getElementById('edit_desc').value = desc;
             abrirModal('modalEditar');

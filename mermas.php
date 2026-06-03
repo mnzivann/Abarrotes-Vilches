@@ -1,18 +1,11 @@
 <?php
 session_start();
+require_once 'conexion.php'; 
+$conn = Conexion::conectar(); 
+
 // ============================================================================
 // MÓDULO DE MERMAS - LÓGICA DE BACKEND
 // ============================================================================
-
-/**
- * [RF_16] MERMA_CONSULTAR
- * Descripción: Consultar productos en merma/caducados.
- * Validación: Mostrar datos correctos (registros existentes).
- */
-$mermasBD = [
-    ["id" => "MER-001", "producto" => "Frijol La Sierra Bayos 570g", "cantidad" => 2, "motivo" => "Empaque roto", "fecha" => "2026-05-28", "estatus" => "Activo"],
-    ["id" => "MER-002", "producto" => "Leche Lala Entera 1L", "cantidad" => 5, "motivo" => "Caducidad", "fecha" => "2026-05-25", "estatus" => "Inactivo"]
-];
 
 $mensaje = "";
 
@@ -21,36 +14,90 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     /**
      * [RF_15] MERMA_REGISTRAR
-     * Descripción: Registrar productos dañados o caducados.
-     * Validación: Cantidad válida (Validar: cantidad > 0).
      */
     if ($accion === 'registrar') {
-        $producto = $_POST['producto'];
+        $id_producto = $_POST['producto']; // Ahora recibimos el ID real del producto
         $cantidad = intval($_POST['cantidad']);
-        $motivo = $_POST['motivo'];
+        $motivo = trim($_POST['motivo']);
         
-        // Cumplimiento de regla de negocio: cantidad > 0 y campos no vacíos
-        if ($cantidad > 0 && !empty($producto) && !empty($motivo)) {
-            // TODO: Integrar INSERT INTO Mermas (producto, cantidad, motivo, fecha, estatus) VALUES (...)
-            $mensaje = "<div class='alert alert-success'>Merma registrada correctamente.</div>";
+        $id_merma = "MER-" . rand(1000, 9999);
+
+        if ($cantidad > 0 && !empty($id_producto) && !empty($motivo)) {
+            
+            // 1. Validar que haya suficiente stock antes de mermar
+            $stmtStock = $conn->prepare("SELECT stock, nombre FROM Productos WHERE id_producto = ?");
+            $stmtStock->execute([$id_producto]);
+            $prodInfo = $stmtStock->fetch(PDO::FETCH_ASSOC);
+            
+            if ($prodInfo && $prodInfo['stock'] >= $cantidad) {
+                try {
+                    $conn->beginTransaction(); // Iniciamos la transacción segura
+                    
+                    // A) Insertar el registro de la merma
+                    $sql_merma = "INSERT INTO Mermas (id_merma, id_producto, cantidad, motivo, estatus) VALUES (?, ?, ?, ?, 'Activo')";
+                    $stmt_merma = $conn->prepare($sql_merma);
+                    $stmt_merma->execute([$id_merma, $id_producto, $cantidad, $motivo]);
+                    
+                    // B) Restar el stock físico de la tabla Productos
+                    $sql_update = "UPDATE Productos SET stock = stock - ? WHERE id_producto = ?";
+                    $stmt_update = $conn->prepare($sql_update);
+                    $stmt_update->execute([$cantidad, $id_producto]);
+
+                    // C) Registrar la salida en la bitácora de inventario
+                    $sql_mov = "INSERT INTO MovimientosInventario (id_producto, tipo, cantidad) VALUES (?, 'Salida', ?)";
+                    $stmt_mov = $conn->prepare($sql_mov);
+                    $stmt_mov->execute([$id_producto, $cantidad]);
+
+                    $conn->commit(); // Confirmamos todos los cambios
+                    
+                    $mensaje = "<div class='alert alert-success'>Merma registrada correctamente. Se descontaron $cantidad unidades del inventario.</div>";
+                } catch(PDOException $e) {
+                    $conn->rollBack(); // Deshacemos todo si hay un error
+                    $mensaje = "<div class='alert alert-danger'>Error al registrar en BD: " . $e->getMessage() . "</div>";
+                }
+            } else {
+                $stockActual = $prodInfo ? $prodInfo['stock'] : 0;
+                $mensaje = "<div class='alert alert-danger'>Error: No puedes mermar $cantidad unidades. Solo hay $stockActual en stock.</div>";
+            }
         } else {
             $mensaje = "<div class='alert alert-danger'>Error de Validación [RF_15]: La cantidad debe ser mayor a 0 y todos los campos son obligatorios.</div>";
         }
     }
 
     /**
-     * [RF_17] MERMA_ELIMINAR
-     * Descripción: Cambiar el estatus de un registro de merma (estatus activo e inactivo).
-     * Validación: Confirmación antes de cambiar el estatus (validar si el registro existe).
+     * [RF_17] MERMA_ELIMINAR (Baja Lógica)
      */
     if ($accion === 'cambiar_estatus') {
         $id = $_POST['id_merma'];
         $nuevo_estatus = $_POST['nuevo_estatus'];
         
-        // TODO: Integrar UPDATE Mermas SET estatus = ? WHERE id = ?
-        $mensaje = "<div class='alert alert-warning'>El registro de merma se actualizó a $nuevo_estatus.</div>";
+        try {
+            $sql = "UPDATE Mermas SET estatus = ? WHERE id_merma = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->execute([$nuevo_estatus, $id]);
+            
+            $mensaje = "<div class='alert alert-warning'>El registro de merma se actualizó a $nuevo_estatus.</div>";
+        } catch(PDOException $e) {
+            $mensaje = "<div class='alert alert-danger'>Error al cambiar estatus: " . $e->getMessage() . "</div>";
+        }
     }
 }
+
+// ============================================================================
+// [RF_16] MERMA_CONSULTAR (SELECT REAL CON JOIN)
+// ============================================================================
+// Usamos JOIN para traer el nombre del producto, ya que la tabla Mermas solo guarda el id_producto
+$sql = "SELECT m.id_merma AS id, p.nombre AS producto, m.cantidad, m.motivo, m.fecha, m.estatus 
+        FROM Mermas m 
+        INNER JOIN Productos p ON m.id_producto = p.id_producto 
+        ORDER BY m.fecha DESC";
+$stmt = $conn->query($sql);
+$mermasBD = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Consultar productos disponibles para poblar el <select> del Modal
+$stmtProd = $conn->query("SELECT id_producto, nombre, stock FROM Productos WHERE estatus = 'Activo'");
+$productosDisponibles = $stmtProd->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -89,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
     <aside class="sidebar">
-        <div class="brand"><h2>Abarrotes Vilches</h2></div>
+        <div class="brand"><h2>Abarrotes Vilches</h2><span>Control de Sistema</span></div>
         <ul class="menu">
             <li><a href="index.php">Productos</a></li>
             <li><a href="categorias.php">Categorías</a></li>
@@ -102,17 +149,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <li><a href="reportes.php">Reportes</a></li>
             <?php endif; ?>
         </ul>
-    </aside>
+        
+        <div class="user-profile" style="padding: 20px; background-color: #0f172a; text-align: center; border-top: 1px solid #334155;">
+            <p style="margin-bottom: 10px; color: #cbd5e1; font-size: 0.9rem;">
+                👤 <?php echo $_SESSION['usuario'] ?? 'Usuario'; ?> (<?php echo $_SESSION['rol'] ?? 'Rol'; ?>)
+            </p>
+            <a href="logout.php" style="display: block; background-color: #ef4444; color: white; text-decoration: none; padding: 8px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; transition: 0.2s;">
+                Cerrar Sesión
+            </a>
+        </div>
+        </aside>
 
     <main class="main-content">
         <header class="topbar"><div>Control de Pérdidas</div><div>Fecha: <?php echo date('d/m/Y'); ?></div></header>
         <div class="page-content">
-            <!-- Renderizado de validaciones RF_15 y RF_17 -->
             <?php echo $mensaje; ?>
 
             <div class="page-header">
                 <h1>Registro de Mermas y Caducidad</h1>
-                <!-- Disparador UI para RF_15 -->
                 <button class="btn btn-danger" onclick="document.getElementById('modalMerma').style.display='flex'">+ Registrar Merma</button>
             </div>
 
@@ -122,40 +176,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <tr><th>ID</th><th>Producto</th><th>Cantidad</th><th>Motivo</th><th>Fecha</th><th>Estatus</th><th>Acciones</th></tr>
                     </thead>
                     <tbody>
-                        <!-- Iteración para cumplir con RF_16 -->
-                        <?php foreach ($mermasBD as $merma): ?>
-                            <tr>
-                                <td><?php echo $merma['id']; ?></td>
-                                <td><?php echo $merma['producto']; ?></td>
-                                <td><?php echo $merma['cantidad']; ?></td>
-                                <td><?php echo $merma['motivo']; ?></td>
-                                <td><?php echo $merma['fecha']; ?></td>
-                                <td><span style="font-weight:bold; color: <?php echo $merma['estatus'] == 'Activo' ? 'green' : 'red'; ?>"><?php echo $merma['estatus']; ?></span></td>
-                                <td>
-                                    <!-- Formulario para cumplir con RF_17 (Baja Lógica) -->
-                                    <form method="POST" style="display:inline;">
-                                        <input type="hidden" name="accion" value="cambiar_estatus">
-                                        <input type="hidden" name="id_merma" value="<?php echo $merma['id']; ?>">
-                                        <?php if ($merma['estatus'] == 'Activo'): ?>
-                                            <input type="hidden" name="nuevo_estatus" value="Inactivo">
-                                            <!-- Validación estricta UI: Confirmación antes de cambiar estatus -->
-                                            <button type="submit" class="btn btn-danger" style="padding: 5px 10px;" onclick="return confirm('¿Anular este registro de merma?');">Anular</button>
-                                        <?php else: ?>
-                                            <input type="hidden" name="nuevo_estatus" value="Activo">
-                                            <!-- Validación estricta UI: Confirmación antes de cambiar estatus -->
-                                            <button type="submit" class="btn btn-success" style="padding: 5px 10px;" onclick="return confirm('¿Restaurar registro?');">Restaurar</button>
-                                        <?php endif; ?>
-                                    </form>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
+                        <?php if (count($mermasBD) > 0): ?>
+                            <?php foreach ($mermasBD as $merma): ?>
+                                <tr>
+                                    <td><?php echo $merma['id']; ?></td>
+                                    <td><?php echo $merma['producto']; ?></td>
+                                    <td><?php echo $merma['cantidad']; ?></td>
+                                    <td><?php echo $merma['motivo']; ?></td>
+                                    <td><?php echo date('d/m/Y', strtotime($merma['fecha'])); ?></td>
+                                    <td><span style="font-weight:bold; color: <?php echo $merma['estatus'] == 'Activo' ? 'green' : 'red'; ?>"><?php echo $merma['estatus']; ?></span></td>
+                                    <td>
+                                        <form method="POST" style="display:inline;">
+                                            <input type="hidden" name="accion" value="cambiar_estatus">
+                                            <input type="hidden" name="id_merma" value="<?php echo $merma['id']; ?>">
+                                            <?php if ($merma['estatus'] == 'Activo'): ?>
+                                                <input type="hidden" name="nuevo_estatus" value="Inactivo">
+                                                <button type="submit" class="btn btn-danger" style="padding: 5px 10px;" onclick="return confirm('¿Anular este registro de merma?');">Anular</button>
+                                            <?php else: ?>
+                                                <input type="hidden" name="nuevo_estatus" value="Activo">
+                                                <button type="submit" class="btn btn-success" style="padding: 5px 10px;" onclick="return confirm('¿Restaurar registro?');">Restaurar</button>
+                                            <?php endif; ?>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr><td colspan="7" style="text-align:center;">No hay mermas registradas.</td></tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
         </div>
     </main>
 
-    <!-- Modal Formulario para RF_15: Registrar Merma -->
     <div id="modalMerma" class="modal">
         <div class="modal-content">
             <h3>Reportar Producto Dañado</h3>
@@ -164,11 +217,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 <label>Producto *</label>
                 <select name="producto" class="form-control" required>
-                    <option value="Aceite Nutrioli 946 ml">Aceite Nutrioli 946 ml</option>
-                    <option value="Frijol La Sierra Bayos 560g">Frijol La Sierra Bayos 560g</option>
+                    <option value="">Selecciona el producto...</option>
+                    <?php foreach($productosDisponibles as $prod): ?>
+                        <option value="<?php echo $prod['id_producto']; ?>">
+                            <?php echo $prod['nombre']; ?> (Disp: <?php echo $prod['stock']; ?>)
+                        </option>
+                    <?php endforeach; ?>
                 </select>
                 
-                <!-- Validación de UI para RF_15 (Min = 1) -->
                 <label>Cantidad (Mayor a 0) *</label>
                 <input type="number" name="cantidad" min="1" class="form-control" required>
                 
@@ -177,6 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <option value="Caducidad">Caducidad</option>
                     <option value="Empaque Roto">Empaque Roto</option>
                     <option value="Dañado en transporte">Dañado en transporte</option>
+                    <option value="Robo o Extravío">Robo o Extravío</option>
                 </select>
                 
                 <div style="display:flex; justify-content: flex-end; gap: 10px;">

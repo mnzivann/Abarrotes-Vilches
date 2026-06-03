@@ -1,45 +1,48 @@
 <?php
 session_start();
-// ============================================================================
-// MÓDULO DE INVENTARIO - LÓGICA DE BACKEND
-// ============================================================================
-
-/**
- * [RF_07] INVENTARIO_CONSULTAR
- * Descripción: Consultar el stock disponible de productos.
- * Validación: Mostrar datos actualizados existentes.
- */
-$productosBD = [
-    ["id" => "PRD-001", "nombre" => "Aceite Nutrioli 946 ml", "stock" => 24, "estatus" => "Activo"],
-    ["id" => "PRD-002", "nombre" => "Frijol La Sierra Bayos 560g", "stock" => 3, "estatus" => "Activo"]
-];
+require_once 'conexion.php'; 
+$conn = Conexion::conectar(); 
 
 $mensaje = "";
 
+// ============================================================================
 // PROCESAMIENTO DE MOVIMIENTOS (POST)
+// ============================================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
     $id_producto = $_POST['id_producto'];
     $cantidad = intval($_POST['cantidad']);
 
-    // Recuperar stock actual del producto para realizar validaciones cruzadas
-    $stock_actual = 0;
-    foreach($productosBD as $p) { 
-        if($p['id'] == $id_producto) { 
-            $stock_actual = $p['stock']; 
-            break; 
-        } 
-    }
+    // 1. Consultar el stock actual DIRECTO de la BD para validaciones
+    $stmt_stock = $conn->prepare("SELECT stock FROM Productos WHERE id_producto = ?");
+    $stmt_stock->execute([$id_producto]);
+    $row = $stmt_stock->fetch(PDO::FETCH_ASSOC);
+    $stock_actual = $row ? intval($row['stock']) : 0;
 
     /**
      * [RF_05] INVENTARIO_ENTRADA
-     * Descripción: Registrar entrada de productos al inventario.
-     * Validación Excel: cantidad > 0.
      */
     if ($accion === 'entrada') {
         if ($cantidad > 0) {
-            // TODO: Integrar UPDATE Productos SET stock = stock + ? WHERE id = ?
-            $mensaje = "<div class='alert alert-success'>Entrada registrada exitosamente: Se agregaron $cantidad unidades al inventario.</div>";
+            try {
+                $conn->beginTransaction(); // Iniciamos transacción segura
+                
+                // 1. Actualizar stock en Productos
+                $sql_update = "UPDATE Productos SET stock = stock + ? WHERE id_producto = ?";
+                $stmt_update = $conn->prepare($sql_update);
+                $stmt_update->execute([$cantidad, $id_producto]);
+                
+                // 2. Guardar bitácora en MovimientosInventario
+                $sql_mov = "INSERT INTO MovimientosInventario (id_producto, tipo, cantidad) VALUES (?, 'Entrada', ?)";
+                $stmt_mov = $conn->prepare($sql_mov);
+                $stmt_mov->execute([$id_producto, $cantidad]);
+                
+                $conn->commit(); // Confirmamos los cambios
+                $mensaje = "<div class='alert alert-success'>Entrada registrada exitosamente: Se agregaron $cantidad unidades al inventario.</div>";
+            } catch(PDOException $e) {
+                $conn->rollBack(); // Si algo falla, deshacemos todo
+                $mensaje = "<div class='alert alert-danger'>Error al registrar entrada: " . $e->getMessage() . "</div>";
+            }
         } else {
             $mensaje = "<div class='alert alert-danger'>Error de Validación [RF_05]: La cantidad de entrada debe ser mayor a 0.</div>";
         }
@@ -47,25 +50,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     /**
      * [RF_06] INVENTARIO_SALIDA
-     * Descripción: Registrar salida de productos del inventario.
-     * Validación Excel: No permitir salida mayor al stock (stock disponible >= cantidad) y cantidad > 0.
      */
     if ($accion === 'salida') {
-        // Validación 1: Cantidad válida y no supera el stock físico
+        // Validación estricta: Cantidad válida y no supera el stock físico
         if ($cantidad > 0 && $stock_actual >= $cantidad) {
-            // TODO: Integrar UPDATE Productos SET stock = stock - ? WHERE id = ?
-            $mensaje = "<div class='alert alert-warning'>Salida registrada exitosamente: Se retiraron $cantidad unidades.</div>";
+            try {
+                $conn->beginTransaction();
+                
+                // 1. Restar stock en Productos
+                $sql_update = "UPDATE Productos SET stock = stock - ? WHERE id_producto = ?";
+                $stmt_update = $conn->prepare($sql_update);
+                $stmt_update->execute([$cantidad, $id_producto]);
+                
+                // 2. Guardar bitácora en MovimientosInventario
+                $sql_mov = "INSERT INTO MovimientosInventario (id_producto, tipo, cantidad) VALUES (?, 'Salida', ?)";
+                $stmt_mov = $conn->prepare($sql_mov);
+                $stmt_mov->execute([$id_producto, $cantidad]);
+                
+                $conn->commit();
+                $mensaje = "<div class='alert alert-warning'>Salida registrada exitosamente: Se retiraron $cantidad unidades.</div>";
+            } catch(PDOException $e) {
+                $conn->rollBack();
+                $mensaje = "<div class='alert alert-danger'>Error al registrar salida: " . $e->getMessage() . "</div>";
+            }
         } 
-        // Validación 2: Intento de retirar más de lo disponible
         else if ($cantidad > $stock_actual) {
             $mensaje = "<div class='alert alert-danger'>Error de Validación [RF_06]: No hay suficiente stock para la salida. (Stock actual disponible: $stock_actual).</div>";
         } 
-        // Validación 3: Cantidad negativa o cero
         else {
             $mensaje = "<div class='alert alert-danger'>Error: La cantidad de salida debe ser mayor a 0.</div>";
         }
     }
 }
+
+// ============================================================================
+// [RF_07] INVENTARIO_CONSULTAR (SELECT REAL)
+// ============================================================================
+// Usamos AS id para que coincida exactamente con las variables que ya lee tu HTML
+$sql = "SELECT id_producto AS id, nombre, stock, estatus FROM Productos";
+$stmt = $conn->query($sql);
+$productosBD = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -106,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
     <aside class="sidebar">
-        <div class="brand"><h2>Abarrotes Vilches</h2></div>
+        <div class="brand"><h2>Abarrotes Vilches</h2><span>Control de Sistema</span></div>
         <ul class="menu">
             <li><a href="index.php">Productos</a></li>
             <li><a href="categorias.php">Categorías</a></li>
@@ -119,7 +144,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <li><a href="reportes.php">Reportes</a></li>
             <?php endif; ?>
         </ul>
-    </aside>
+        
+        <div class="user-profile" style="padding: 20px; background-color: #0f172a; text-align: center; border-top: 1px solid #334155;">
+            <p style="margin-bottom: 10px; color: #cbd5e1; font-size: 0.9rem;">
+                <?php echo $_SESSION['usuario'] ?? 'Usuario'; ?> (<?php echo $_SESSION['rol'] ?? 'Rol'; ?>)
+            </p>
+            <a href="logout.php" style="display: block; background-color: #ef4444; color: white; text-decoration: none; padding: 8px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; transition: 0.2s;">
+                Cerrar Sesión
+            </a>
+        </div>
+        </aside>
 
     <main class="main-content">
         <header class="topbar"><div>Control de Inventario</div><div>Fecha: <?php echo date('d/m/Y'); ?></div></header>

@@ -1,88 +1,110 @@
 <?php
 session_start();
-// ============================================================================
-// MÓDULO DE EMPLEADOS - LÓGICA DE BACKEND
-// ============================================================================
-
-/**
- * [RF_12] EMPLEADO_CONSULTAR
- * Descripción: Consultar empleados registrados.
- * Validación: Mostrar datos correctamente (registros existentes en BD).
- */
-$empleadosBD = [
-    ["id" => "EMP-01", "nombre" => "Jorge Ivan Muñiz Samano", "usuario" => "admin_jorge", "rol" => "Administrador", "estatus" => "Activo"],
-    ["id" => "EMP-02", "nombre" => "Hazziel Enrique Ramirez", "usuario" => "cajero_hazziel", "rol" => "Cajero", "estatus" => "Activo"],
-    ["id" => "EMP-03", "nombre" => "Luis Angel Jacobo Vite", "usuario" => "almacen_jacobo", "rol" => "Almacenista", "estatus" => "Inactivo"]
-];
+require_once 'conexion.php'; 
+$conn = Conexion::conectar(); 
 
 $mensaje = "";
 
+// ============================================================================
+// PROCESAMIENTO DE FORMULARIOS (POST)
+// ============================================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
 
     /**
      * [RF_11] EMPLEADO_AGREGAR
-     * Descripción: Registrar empleados.
-     * Validación: Campos obligatorios y validar que el empleado/usuario sea único.
      */
     if ($accion === 'agregar') {
         $nombre = $_POST['nombre'];
         $usuario = $_POST['usuario'];
         $password = $_POST['password'];
         $rol = $_POST['rol'];
+        
+        // Generamos el ID de Empleado
+        $id_empleado = "EMP-" . rand(1000, 9999); 
 
-        // Validación estricta del Excel: Empleado único (Simulación)
-        $existe = false;
-        foreach($empleadosBD as $emp) { if($emp['usuario'] === $usuario) { $existe = true; } }
-
-        // Validación de campos obligatorios
-        if (!$existe && !empty($nombre) && !empty($password)) {
-            // TODO: Integrar INSERT INTO Empleados (nombre, usuario, password, rol, estatus) VALUES (...)
-            $mensaje = "<div class='alert alert-success'>Empleado '$nombre' registrado con éxito.</div>";
+        if (!empty($nombre) && !empty($password)) {
+            try {
+                $sql = "INSERT INTO Empleados (id_empleado, nombre, usuario, password, rol, estatus) VALUES (?, ?, ?, ?, ?, 'Activo')";
+                $stmt = $conn->prepare($sql);
+                $stmt->execute([$id_empleado, $nombre, $usuario, $password, $rol]);
+                
+                $mensaje = "<div class='alert alert-success'>Empleado '$nombre' registrado con éxito.</div>";
+            } catch(PDOException $e) {
+                // El error 2627 es "Violation of UNIQUE KEY", es decir, el usuario ya existe
+                $mensaje = "<div class='alert alert-danger'>Error de Validación [RF_11]: El nombre de usuario '$usuario' ya está en uso.</div>";
+            }
         } else {
-            $mensaje = "<div class='alert alert-danger'>Error de Validación [RF_11]: El nombre de usuario ya existe o faltan datos obligatorios.</div>";
+            $mensaje = "<div class='alert alert-danger'>Error: Faltan datos obligatorios.</div>";
         }
     }
 
     /**
      * [RF_13] EMPLEADO_ACTUALIZAR
-     * Descripción: Modificar datos de empleado.
-     * Validación: Validar cambios en registros existentes.
      */
     if ($accion === 'editar') {
         $id = $_POST['id_empleado'];
         $nombre = $_POST['nombre'];
         $rol = $_POST['rol'];
+        $password = $_POST['password'];
         
-        // TODO: Integrar UPDATE Empleados SET nombre = ?, rol = ? WHERE id = ?
-        $mensaje = "<div class='alert alert-success'>Datos del empleado actualizados correctamente.</div>";
+        try {
+            if (!empty($password)) {
+                $sql = "UPDATE Empleados SET nombre = ?, rol = ?, password = ? WHERE id_empleado = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->execute([$nombre, $rol, $password, $id]);
+            } else {
+                $sql = "UPDATE Empleados SET nombre = ?, rol = ? WHERE id_empleado = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->execute([$nombre, $rol, $id]);
+            }
+            $mensaje = "<div class='alert alert-success'>Datos del empleado actualizados correctamente.</div>";
+        } catch(PDOException $e) {
+            $mensaje = "<div class='alert alert-danger'>Error al actualizar: " . $e->getMessage() . "</div>";
+        }
     }
 
     /**
-     * [RF_14] EMPLEADO_ELIMINAR
-     * Descripción: Cambiar estatus de empleado (Baja lógica).
-     * Validación: Requiere confirmación (Aplicada en el botón submit del Frontend).
+     * [RF_14] EMPLEADO_ELIMINAR (Baja Lógica)
      */
     if ($accion === 'cambiar_estatus') {
         $id = $_POST['id_empleado'];
         $nuevo_estatus = $_POST['nuevo_estatus'];
         
-        // TODO: Integrar UPDATE Empleados SET estatus = ? WHERE id = ?
-        $mensaje = "<div class='alert alert-warning'>El estatus del empleado ha cambiado a $nuevo_estatus.</div>";
+        try {
+            $sql = "UPDATE Empleados SET estatus = ? WHERE id_empleado = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->execute([$nuevo_estatus, $id]);
+            $mensaje = "<div class='alert alert-warning'>El estatus del empleado ha cambiado a $nuevo_estatus.</div>";
+        } catch(PDOException $e) {
+            $mensaje = "<div class='alert alert-danger'>Error al cambiar estatus: " . $e->getMessage() . "</div>";
+        }
     }
 }
 
-/**
- * [RF_12] EMPLEADO_CONSULTAR (Filtro de Búsqueda)
- * Descripción: Consultar empleados registrados mediante búsqueda.
- * Validación: Coincidencia en búsqueda por nombre o usuario.
- */
+// ============================================================================
+// [RF_12] EMPLEADO_CONSULTAR (SELECT REAL)
+// ============================================================================
 $busqueda = $_GET['buscar'] ?? '';
+
 if (!empty($busqueda)) {
-    $empleadosBD = array_filter($empleadosBD, function($e) use ($busqueda) {
-        return stripos($e['nombre'], $busqueda) !== false || stripos($e['usuario'], $busqueda) !== false;
-    });
+    // Consulta con filtros de búsqueda
+    $sql = "SELECT * FROM Empleados WHERE nombre LIKE ? OR usuario LIKE ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->execute(["%$busqueda%", "%$busqueda%"]); 
+} else {
+    // Consulta general de todo el directorio
+    $sql = "SELECT * FROM Empleados";
+    $stmt = $conn->query($sql);
 }
+
+$empleadosBD = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Adaptamos el 'id_empleado' de SQL Server al 'id' que ya usaba tu código HTML
+foreach($empleadosBD as &$emp) {
+    $emp['id'] = $emp['id_empleado'];
+}
+unset($emp);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -112,8 +134,8 @@ if (!empty($busqueda)) {
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
         .alert { padding: 15px; margin-bottom: 20px; border-radius: 6px; }
-        .alert-success { background-color: #dcfce7; color: #166534; }
-        .alert-danger { background-color: #fee2e2; color: #991b1b; }
+        .alert-success { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .alert-danger { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
         .alert-warning { background-color: #fef08a; color: #854d0e; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 100; }
         .modal-content { background: white; padding: 30px; border-radius: 8px; width: 400px; }
@@ -123,7 +145,7 @@ if (!empty($busqueda)) {
 </head>
 <body>
     <aside class="sidebar">
-        <div class="brand"><h2>Abarrotes Vilches</h2></div>
+        <div class="brand"><h2>Abarrotes Vilches</h2><span>Control de Sistema</span></div>
         <ul class="menu">
             <li><a href="index.php">Productos</a></li>
             <li><a href="categorias.php">Categorías</a></li>
@@ -136,7 +158,16 @@ if (!empty($busqueda)) {
                 <li><a href="reportes.php">Reportes</a></li>
             <?php endif; ?>
         </ul>
-    </aside>
+        
+        <div class="user-profile" style="padding: 20px; background-color: #0f172a; text-align: center; border-top: 1px solid #334155;">
+            <p style="margin-bottom: 10px; color: #cbd5e1; font-size: 0.9rem;">
+                👤 <?php echo $_SESSION['usuario'] ?? 'Usuario'; ?> (<?php echo $_SESSION['rol'] ?? 'Rol'; ?>)
+            </p>
+            <a href="logout.php" style="display: block; background-color: #ef4444; color: white; text-decoration: none; padding: 8px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; transition: 0.2s;">
+                Cerrar Sesión
+            </a>
+        </div>
+        </aside>
 
     <main class="main-content">
         <header class="topbar"><div>Recursos Humanos</div><div>Fecha: <?php echo date('d/m/Y'); ?></div></header>
@@ -150,8 +181,11 @@ if (!empty($busqueda)) {
 
             <div class="card">
                 <form method="GET" action="empleados.php" class="search-bar">
-                    <input type="text" name="buscar" class="form-control" placeholder="Buscar por nombre o usuario..." style="margin:0;">
+                    <input type="text" name="buscar" class="form-control" placeholder="Buscar por nombre o usuario..." style="margin:0;" value="<?php echo htmlspecialchars($busqueda); ?>">
                     <button type="submit" class="btn btn-primary">Buscar</button>
+                    <?php if(!empty($busqueda)): ?>
+                        <a href="empleados.php" class="btn btn-warning" style="text-decoration:none;">Limpiar</a>
+                    <?php endif; ?>
                 </form>
 
                 <table>
@@ -159,30 +193,34 @@ if (!empty($busqueda)) {
                         <tr><th>ID</th><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estatus</th><th>Acciones</th></tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($empleadosBD as $emp): ?>
-                            <tr>
-                                <td><?php echo $emp['id']; ?></td>
-                                <td><?php echo $emp['nombre']; ?></td>
-                                <td><?php echo $emp['usuario']; ?></td>
-                                <td><?php echo $emp['rol']; ?></td>
-                                <td><span style="font-weight:bold; color: <?php echo $emp['estatus'] == 'Activo' ? 'green' : 'red'; ?>"><?php echo $emp['estatus']; ?></span></td>
-                                <td style="display: flex; gap: 5px;">
-                                    <button class="btn btn-warning" style="padding: 5px 10px;" onclick="abrirModalEditar('<?php echo $emp['id']; ?>', '<?php echo $emp['nombre']; ?>', '<?php echo $emp['rol']; ?>')">Editar</button>
-                                    
-                                    <form method="POST" style="display:inline;">
-                                        <input type="hidden" name="accion" value="cambiar_estatus">
-                                        <input type="hidden" name="id_empleado" value="<?php echo $emp['id']; ?>">
-                                        <?php if ($emp['estatus'] == 'Activo'): ?>
-                                            <input type="hidden" name="nuevo_estatus" value="Inactivo">
-                                            <button type="submit" class="btn btn-danger" style="padding: 5px 10px;" onclick="return confirm('¿Desactivar acceso a este empleado?');">Desactivar</button>
-                                        <?php else: ?>
-                                            <input type="hidden" name="nuevo_estatus" value="Activo">
-                                            <button type="submit" class="btn btn-success" style="padding: 5px 10px;" onclick="return confirm('¿Restaurar acceso?');">Activar</button>
-                                        <?php endif; ?>
-                                    </form>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
+                        <?php if (count($empleadosBD) > 0): ?>
+                            <?php foreach ($empleadosBD as $emp): ?>
+                                <tr>
+                                    <td><?php echo $emp['id']; ?></td>
+                                    <td><?php echo $emp['nombre']; ?></td>
+                                    <td><?php echo $emp['usuario']; ?></td>
+                                    <td><?php echo $emp['rol']; ?></td>
+                                    <td><span style="font-weight:bold; color: <?php echo $emp['estatus'] == 'Activo' ? 'green' : 'red'; ?>"><?php echo $emp['estatus']; ?></span></td>
+                                    <td style="display: flex; gap: 5px;">
+                                        <button class="btn btn-warning" style="padding: 5px 10px;" onclick="abrirModalEditar('<?php echo $emp['id']; ?>', '<?php echo $emp['nombre']; ?>', '<?php echo $emp['rol']; ?>')">Editar</button>
+                                        
+                                        <form method="POST" style="display:inline;">
+                                            <input type="hidden" name="accion" value="cambiar_estatus">
+                                            <input type="hidden" name="id_empleado" value="<?php echo $emp['id']; ?>">
+                                            <?php if ($emp['estatus'] == 'Activo'): ?>
+                                                <input type="hidden" name="nuevo_estatus" value="Inactivo">
+                                                <button type="submit" class="btn btn-danger" style="padding: 5px 10px;" onclick="return confirm('¿Desactivar acceso a este empleado?');">Desactivar</button>
+                                            <?php else: ?>
+                                                <input type="hidden" name="nuevo_estatus" value="Activo">
+                                                <button type="submit" class="btn btn-success" style="padding: 5px 10px;" onclick="return confirm('¿Restaurar acceso?');">Activar</button>
+                                            <?php endif; ?>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr><td colspan="6" style="text-align:center;">No se encontraron empleados.</td></tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -200,8 +238,7 @@ if (!empty($busqueda)) {
                 <label>Rol *</label>
                 <select name="rol" class="form-control" required>
                     <option value="Administrador">Administrador</option>
-                    <option value="Cajero">Cajero</option>
-                    <option value="Almacenista">Almacenista</option>
+                    <option value="Empleado">Empleado</option>
                 </select>
                 <div style="display:flex; justify-content: flex-end; gap: 10px;">
                     <button type="button" class="btn btn-danger" onclick="document.getElementById('modalAgregar').style.display='none'">Cancelar</button>
@@ -222,8 +259,7 @@ if (!empty($busqueda)) {
                 <label>Rol *</label>
                 <select name="rol" id="edit_rol" class="form-control" required>
                     <option value="Administrador">Administrador</option>
-                    <option value="Cajero">Cajero</option>
-                    <option value="Almacenista">Almacenista</option>
+                    <option value="Empleado">Empleado</option>
                 </select>
                 <div style="display:flex; justify-content: flex-end; gap: 10px;">
                     <button type="button" class="btn btn-danger" onclick="document.getElementById('modalEditar').style.display='none'">Cancelar</button>

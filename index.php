@@ -1,88 +1,106 @@
 <?php
 session_start();
+require_once 'conexion.php'; 
+$conn = Conexion::conectar(); 
+
 // ============================================================================
-// MÓDULO DE PRODUCTOS - LÓGICA DE BACKEND (CONTROLADOR SIMULADO)
+// MÓDULO DE PRODUCTOS - LÓGICA DE BACKEND
 // ============================================================================
 
-/**
- * [RF_07] INVENTARIO CONSULTAR (Base base para productos)
- * Simulación de la Base de Datos.
- * En la integración final, esto será reemplazado por un SELECT a SQL Server.
- */
-$productosBD = [
-    ["id" => "PRD-001", "nombre" => "Aceite Nutrioli 946 ml", "categoria" => "Abarrotes", "precio" => 45.00, "stock" => 24, "estatus" => "Activo"],
-    ["id" => "PRD-002", "nombre" => "Frijol La Sierra Bayos 560g", "categoria" => "Abarrotes", "precio" => 18.50, "stock" => 3, "estatus" => "Activo"],
-    ["id" => "PRD-003", "nombre" => "Detergente Foca 1Kg", "categoria" => "Limpieza", "precio" => 32.00, "stock" => 0, "estatus" => "Inactivo"]
-];
+$mensaje = "";
 
-$mensaje = ""; // Variable para renderizar alertas en la Interfaz de Usuario
-
-// PROCESAMIENTO DE FORMULARIOS (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
 
     /**
      * [RF_01] PRODUCTO_AGREGAR
-     * Descripción: El usuario captura los datos y da clic en "Agregar".
-     * Validaciones aplicadas: Campos no vacíos, precio > 0, stock >= 0.
      */
     if ($accion === 'agregar') {
-        $nombre = $_POST['nombre'];
-        $categoria = $_POST['categoria'];
+        $nombre = trim($_POST['nombre']);
+        $id_categoria = $_POST['categoria']; 
         $precio = floatval($_POST['precio']);
         $stock = intval($_POST['stock']);
+        
+        $id_producto = "PRD-" . rand(1000, 9999);
 
-        // Cumplimiento estricto de la regla de negocio del Excel
-        if ($precio > 0 && $stock >= 0 && !empty($nombre)) {
-            // TODO: Integrar consulta INSERT INTO Productos (...) VALUES (...)
-            $mensaje = "<div class='alert alert-success'>Producto '$nombre' agregado correctamente.</div>";
+        if ($precio > 0 && $stock >= 0 && !empty($nombre) && !empty($id_categoria)) {
+            try {
+                $sql = "INSERT INTO Productos (id_producto, nombre, id_categoria, precio, stock, estatus) VALUES (?, ?, ?, ?, ?, 'Activo')";
+                $stmt = $conn->prepare($sql);
+                $stmt->execute([$id_producto, $nombre, $id_categoria, $precio, $stock]);
+                
+                $mensaje = "<div class='alert alert-success'>Producto '$nombre' agregado correctamente a la BD.</div>";
+            } catch(PDOException $e) {
+                $mensaje = "<div class='alert alert-danger'>Error al guardar en BD: " . $e->getMessage() . "</div>";
+            }
         } else {
-            $mensaje = "<div class='alert alert-danger'>Error de Validación: Verifica que el precio sea mayor a 0 y el stock no sea negativo.</div>";
+            $mensaje = "<div class='alert alert-danger'>Error de Validación: Verifica que el precio sea mayor a 0, el stock no sea negativo y no haya campos vacíos.</div>";
         }
     }
 
     /**
      * [RF_03] PRODUCTO_MODIFICAR
-     * Descripción: El usuario selecciona un producto y modifica sus datos.
-     * Validaciones aplicadas: precio > 0, stock >= 0 antes de guardar.
      */
     if ($accion === 'editar') {
         $id = $_POST['id_producto'];
+        $id_categoria = $_POST['categoria']; 
         $precio = floatval($_POST['precio']);
         $stock = intval($_POST['stock']);
         
-        if ($precio > 0 && $stock >= 0) {
-            // TODO: Integrar consulta UPDATE Productos SET precio = ?, stock = ? WHERE id = ?
-            $mensaje = "<div class='alert alert-success'>Producto actualizado correctamente.</div>";
+        if ($precio > 0 && $stock >= 0 && !empty($id_categoria)) {
+            try {
+                $sql = "UPDATE Productos SET id_categoria = ?, precio = ?, stock = ? WHERE id_producto = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->execute([$id_categoria, $precio, $stock, $id]);
+                
+                $mensaje = "<div class='alert alert-success'>Producto actualizado correctamente en BD.</div>";
+            } catch(PDOException $e) {
+                $mensaje = "<div class='alert alert-danger'>Error al actualizar: " . $e->getMessage() . "</div>";
+            }
+        } else {
+            $mensaje = "<div class='alert alert-danger'>Error: El precio y stock deben ser válidos y debe seleccionar una categoría.</div>";
         }
     }
 
     /**
-     * [RF_04] PRODUCTO_ELIMINAR
-     * Descripción: El usuario cambia el estatus de un producto en lugar de eliminarlo de la BD (Baja Lógica).
-     * Validaciones aplicadas: Confirmación en el frontend antes de procesar el cambio.
+     * [RF_04] PRODUCTO_ELIMINAR (Baja Lógica)
      */
     if ($accion === 'cambiar_estatus') {
         $id = $_POST['id_producto'];
         $nuevo_estatus = $_POST['nuevo_estatus'];
-        // TODO: Integrar consulta UPDATE Productos SET estatus = ? WHERE id = ?
-        $mensaje = "<div class='alert alert-warning'>El estatus del producto ha cambiado a $nuevo_estatus.</div>";
+        
+        try {
+            $sql = "UPDATE Productos SET estatus = ? WHERE id_producto = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->execute([$nuevo_estatus, $id]);
+            
+            $mensaje = "<div class='alert alert-warning'>El estatus del producto ha cambiado a $nuevo_estatus.</div>";
+        } catch(PDOException $e) {
+            $mensaje = "<div class='alert alert-danger'>Error al cambiar estatus: " . $e->getMessage() . "</div>";
+        }
     }
 }
 
-/**
- * [RF_02] PRODUCTO_CONSULTAR
- * Descripción: El usuario busca productos por nombre o categoría y el sistema muestra los resultados.
- * Validaciones aplicadas: Coincidencia de nombre o categoría (Búsqueda GET).
- */
+// ============================================================================
+// [RF_02] PRODUCTO_CONSULTAR (BÚSQUEDA BAJO DEMANDA)
+// ============================================================================
 $busqueda = $_GET['buscar'] ?? '';
+$productosBD = []; // Iniciamos el arreglo vacío por defecto
+
 if (!empty($busqueda)) {
-    // Simulación del filtro LIKE. 
-    // En SQL Server será: SELECT * FROM Productos WHERE nombre LIKE '%$busqueda%' OR categoria LIKE '%$busqueda%'
-    $productosBD = array_filter($productosBD, function($p) use ($busqueda) {
-        return stripos($p['nombre'], $busqueda) !== false || stripos($p['categoria'], $busqueda) !== false;
-    });
+    // Solo ejecutamos el SELECT si el usuario escribió algo en el buscador
+    $sql = "SELECT p.id_producto AS id, p.id_categoria, p.nombre, c.nombre AS categoria, p.precio, p.stock, p.estatus 
+            FROM Productos p 
+            LEFT JOIN Categorias c ON p.id_categoria = c.id_categoria 
+            WHERE p.nombre LIKE ? OR c.nombre LIKE ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->execute(["%$busqueda%", "%$busqueda%"]);
+    $productosBD = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+
+// Consultar categorías activas para poblar los <select> de los Modales
+$stmtCat = $conn->query("SELECT id_categoria, nombre FROM Categorias WHERE estatus = 'Activo'");
+$categoriasDisponibles = $stmtCat->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -95,7 +113,6 @@ if (!empty($busqueda)) {
         :root { --primary-color: #2563eb; --sidebar-bg: #1e293b; --bg-color: #f1f5f9; --text-dark: #0f172a; --white: #ffffff; --danger: #ef4444; --success: #22c55e; --warning: #eab308; }
         body { display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-dark); }
         
-        /* Sidebar y Topbar */
         .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--white); display: flex; flex-direction: column; }
         .brand { padding: 24px; text-align: center; border-bottom: 1px solid #334155; }
         .menu { list-style: none; padding: 20px 0; flex: 1; }
@@ -105,44 +122,41 @@ if (!empty($busqueda)) {
         .topbar { background-color: var(--white); padding: 20px 40px; display: flex; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .page-content { padding: 40px; overflow-y: auto; flex: 1; }
         
-        /* Controles y Botones */
         .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; color: white; transition: 0.2s; }
         .btn-primary { background-color: var(--primary-color); }
         .btn-warning { background-color: var(--warning); color: black; }
         .btn-danger { background-color: var(--danger); }
+        .btn-success { background-color: var(--success); }
         .btn-action { padding: 6px 12px; font-size: 0.85rem; margin-right: 5px; }
         
-        /* Buscador RF_02 */
         .search-bar { display: flex; gap: 10px; margin-bottom: 20px; }
-        .form-control { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; width: 100%; outline: none; }
+        .form-control { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; width: 100%; outline: none; margin-top: 5px; margin-bottom: 15px; }
         
-        /* Tabla */
         .card { background-color: var(--white); border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); padding: 20px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
         .badge { padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: bold; }
         .bg-success { background-color: #dcfce7; color: #166534; }
         .bg-danger { background-color: #fee2e2; color: #991b1b; }
+        
         .alert { padding: 15px; margin-bottom: 20px; border-radius: 6px; }
         .alert-success { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
         .alert-danger { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
         .alert-warning { background-color: #fef08a; color: #854d0e; }
 
-        /* Estilos para Modales (Ventanas Emergentes) */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 100; }
         .modal-content { background: white; padding: 30px; border-radius: 8px; width: 400px; }
         .modal-content h3 { margin-bottom: 20px; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-size: 0.9rem; font-weight: 600; }
-        .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        .form-group label { display: block; font-size: 0.9rem; font-weight: 600; }
+        .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
     </style>
 </head>
 <body>
     <aside class="sidebar">
-        <div class="brand"><h2>Abarrotes Vilches</h2></div>
+        <div class="brand"><h2>Abarrotes Vilches</h2><span>Control de Sistema</span></div>
         <ul class="menu">
-            <li><a href="index.php">Productos</a></li>
+            <li class="active"><a href="index.php">Productos</a></li>
             <li><a href="categorias.php">Categorías</a></li>
             <li><a href="inventario.php">Inventario</a></li>
             <li><a href="ventas.php">Ventas</a></li>
@@ -153,6 +167,15 @@ if (!empty($busqueda)) {
                 <li><a href="reportes.php">Reportes</a></li>
             <?php endif; ?>
         </ul>
+        
+        <div class="user-profile" style="padding: 20px; background-color: #0f172a; text-align: center; border-top: 1px solid #334155;">
+            <p style="margin-bottom: 10px; color: #cbd5e1; font-size: 0.9rem;">
+                👤 <?php echo $_SESSION['usuario'] ?? 'Usuario'; ?> (<?php echo $_SESSION['rol'] ?? 'Rol'; ?>)
+            </p>
+            <a href="logout.php" style="display: block; background-color: #ef4444; color: white; text-decoration: none; padding: 8px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; transition: 0.2s;">
+                Cerrar Sesión
+            </a>
+        </div>
     </aside>
 
     <main class="main-content">
@@ -171,7 +194,7 @@ if (!empty($busqueda)) {
 
             <div class="card">
                 <form method="GET" action="index.php" class="search-bar">
-                    <input type="text" name="buscar" class="form-control" placeholder="Buscar por nombre o categoría..." value="<?php echo htmlspecialchars($busqueda); ?>">
+                    <input type="text" name="buscar" class="form-control" style="margin: 0;" placeholder="Buscar por nombre o categoría..." value="<?php echo htmlspecialchars($busqueda); ?>">
                     <button type="submit" class="btn btn-primary">Buscar</button>
                     <?php if(!empty($busqueda)): ?>
                         <a href="index.php" class="btn btn-warning" style="text-decoration:none;">Limpiar</a>
@@ -196,7 +219,7 @@ if (!empty($busqueda)) {
                                 <tr>
                                     <td><?php echo $p['id']; ?></td>
                                     <td><?php echo $p['nombre']; ?></td>
-                                    <td><?php echo $p['categoria']; ?></td>
+                                    <td><?php echo $p['categoria'] ?? 'Sin Categoría'; ?></td>
                                     <td>$<?php echo number_format($p['precio'], 2); ?></td>
                                     <td><?php echo $p['stock']; ?></td>
                                     <td>
@@ -205,7 +228,7 @@ if (!empty($busqueda)) {
                                         </span>
                                     </td>
                                     <td style="display: flex; gap: 5px;">
-                                        <button class="btn btn-warning btn-action" onclick="abrirModalEditar('<?php echo $p['id']; ?>', '<?php echo $p['nombre']; ?>', <?php echo $p['precio']; ?>, <?php echo $p['stock']; ?>)">Editar</button>
+                                        <button class="btn btn-warning btn-action" onclick="abrirModalEditar('<?php echo $p['id']; ?>', '<?php echo htmlspecialchars($p['nombre'], ENT_QUOTES); ?>', '<?php echo $p['id_categoria']; ?>', <?php echo $p['precio']; ?>, <?php echo $p['stock']; ?>)">Editar</button>
                                         
                                         <form method="POST" style="display:inline;">
                                             <input type="hidden" name="accion" value="cambiar_estatus">
@@ -222,7 +245,17 @@ if (!empty($busqueda)) {
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <tr><td colspan="7" style="text-align:center;">No se encontraron productos coincidentes.</td></tr>
+                            <tr>
+                                <td colspan="7" style="text-align:center; padding: 40px; color: #64748b;">
+                                    <?php if(empty($busqueda)): ?>
+                                        <div style="font-size: 2rem; margin-bottom: 10px;"></div>
+                                        <p style="font-size: 1.1rem;">Utiliza la barra de búsqueda para encontrar un producto en el catálogo.</p>
+                                    <?php else: ?>
+                                        <div style="font-size: 2rem; margin-bottom: 10px;">❌</div>
+                                        <p style="font-size: 1.1rem;">No se encontraron productos coincidentes con "<b><?php echo htmlspecialchars($busqueda); ?></b>".</p>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -240,10 +273,17 @@ if (!empty($busqueda)) {
                     <label>Nombre del Producto *</label>
                     <input type="text" name="nombre" class="form-control" required>
                 </div>
+                
                 <div class="form-group">
                     <label>Categoría *</label>
-                    <input type="text" name="categoria" class="form-control" required>
+                    <select name="categoria" class="form-control" required>
+                        <option value="">Seleccione una categoría...</option>
+                        <?php foreach($categoriasDisponibles as $cat): ?>
+                            <option value="<?php echo $cat['id_categoria']; ?>"><?php echo $cat['nombre']; ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
+                
                 <div class="form-group">
                     <label>Precio (Mayor a 0) *</label>
                     <input type="number" name="precio" step="0.01" min="0.01" class="form-control" required>
@@ -272,6 +312,17 @@ if (!empty($busqueda)) {
                     <label>Nombre</label>
                     <input type="text" id="edit_nombre" class="form-control" disabled>
                 </div>
+                
+                <div class="form-group">
+                    <label>Categoría *</label>
+                    <select name="categoria" id="edit_categoria" class="form-control" required>
+                        <option value="">Seleccione una categoría...</option>
+                        <?php foreach($categoriasDisponibles as $cat): ?>
+                            <option value="<?php echo $cat['id_categoria']; ?>"><?php echo $cat['nombre']; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
                 <div class="form-group">
                     <label>Precio *</label>
                     <input type="number" name="precio" id="edit_precio" step="0.01" min="0.01" class="form-control" required>
@@ -290,16 +341,17 @@ if (!empty($busqueda)) {
     </div>
 
     <script>
-        // Funciones de control de UI para Modales
         function abrirModal(id) {
             document.getElementById(id).style.display = 'flex';
         }
         function cerrarModal(id) {
             document.getElementById(id).style.display = 'none';
         }
-        function abrirModalEditar(id, nombre, precio, stock) {
+        
+        function abrirModalEditar(id, nombre, id_categoria, precio, stock) {
             document.getElementById('edit_id').value = id;
             document.getElementById('edit_nombre').value = nombre;
+            document.getElementById('edit_categoria').value = id_categoria;
             document.getElementById('edit_precio').value = precio;
             document.getElementById('edit_stock').value = stock;
             abrirModal('modalEditar');
