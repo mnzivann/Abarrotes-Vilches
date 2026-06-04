@@ -87,7 +87,7 @@ INSERT INTO Productos (id_producto, nombre, id_categoria, precio, stock, estatus
 ('PRD-002', 'Frijol La Sierra Bayos 560g', 'CAT-01', 18.50, 3, 'Activo'),
 ('PRD-003', 'Detergente Foca 1Kg', 'CAT-02', 32.00, 0, 'Inactivo');
 
--- Contraseñas configuradas en '1234' para pruebas rápidas
+-- Contraseñas configuradas para pruebas rápidas
 INSERT INTO Empleados (id_empleado, nombre, usuario, password, rol, estatus) VALUES
 ('EMP-01', 'Jorge Ivan Muñiz Samano', 'admin', '1234', 'Administrador', 'Activo'),
 ('EMP-02', 'Hazziel Enrique Ramirez', 'empleado', '1234', 'Empleado', 'Activo'),
@@ -108,4 +108,4 @@ INSERT INTO Mermas (id_merma, id_producto, cantidad, motivo, fecha, estatus) VAL
 GO
 
 
-select * from Productos;
+select * from empleados;
