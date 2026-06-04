@@ -1,3 +1,10 @@
+<?php
+/**
+ * @var string $busqueda
+ * @var array $empleadosBD
+ */
+?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>

@@ -108,4 +108,4 @@ INSERT INTO Mermas (id_merma, id_producto, cantidad, motivo, fecha, estatus) VAL
 GO
 
 
-select * from empleados;
+select * from inventario;
